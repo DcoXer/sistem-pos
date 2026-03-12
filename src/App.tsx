@@ -174,6 +174,7 @@ export default function App() {
       invoice: sale.invoice,
       sku: sale.sku,
       qty: Number(sale.qty),
+      size: sale.size,
     };
 
     const updatedSales = [newSale, ...(storeData.sales || [])];
