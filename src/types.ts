@@ -1,9 +1,18 @@
+export const SIZES = ['S', 'M', 'L', 'XL', 'XXL'] as const;
+export type Size = typeof SIZES[number];
+
+export interface SizeStock {
+  size: Size;
+  stock: number;
+}
+
 export interface InventoryItem {
   sku: string;
   name: string;
   hpp: number;
   price: number;
-  stock: number;
+  stock: number;       // total stok awal (sum of all sizes)
+  sizes: SizeStock[];  // stok per ukuran
 }
 
 export interface SaleItem {
@@ -12,6 +21,7 @@ export interface SaleItem {
   invoice: string;
   sku: string;
   qty: number;
+  size: Size; // ukuran yang terjual
 }
 
 export interface ExpenseItem {
