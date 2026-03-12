@@ -12,7 +12,12 @@ export function useMetrics(storeData: StoreData) {
     const exp = storeData.expenses || [];
 
     const stockMap = inv.reduce((acc, item) => {
-      acc[item.sku] = { ...item, sold: 0, current: item.stock };
+      acc[item.sku] = {
+        ...item,
+        sold: 0,
+        current: item.stock,
+        soldBySize: {} as Record<string, number>, // { S: 0, M: 2, ... }
+      };
       return acc;
     }, {} as { [key: string]: any });
 
@@ -23,6 +28,12 @@ export function useMetrics(storeData: StoreData) {
         totalHppSold += (item.hpp * sale.qty);
         stockMap[sale.sku].sold += sale.qty;
         stockMap[sale.sku].current -= sale.qty;
+
+        // Track sold per ukuran
+        if (sale.size) {
+          const prev = stockMap[sale.sku].soldBySize[sale.size] || 0;
+          stockMap[sale.sku].soldBySize[sale.size] = prev + sale.qty;
+        }
       }
     });
 
