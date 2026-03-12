@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { InventoryItem } from "../types";
+import { SIZES } from "../types";
 
 const formatRp = (num: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -15,6 +16,8 @@ interface InventoryTabProps {
   onDeleteInventory: (sku: string) => void;
 }
 
+const emptySizes = () => SIZES.map(size => ({ size, stock: 0 }));
+
 export default function InventoryTab({
   metrics,
   onAddInventory,
@@ -25,19 +28,39 @@ export default function InventoryTab({
     name: "",
     hpp: "",
     price: "",
-    stock: "",
   });
+
+  // Stok per ukuran
+  const [sizeStocks, setSizeStocks] = useState<Record<string, string>>(
+    Object.fromEntries(SIZES.map(s => [s, ""]))
+  );
+
+  const handleSizeChange = (size: string, value: string) => {
+    setSizeStocks(prev => ({ ...prev, [size]: value }));
+  };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    const sizes = SIZES.map(size => ({
+      size,
+      stock: Number(sizeStocks[size]) || 0,
+    }));
+
+    const totalStock = sizes.reduce((sum, s) => sum + s.stock, 0);
 
     onAddInventory({
       sku: newInv.sku,
       name: newInv.name,
       hpp: Number(newInv.hpp),
       price: Number(newInv.price),
-      stock: Number(newInv.stock),
+      stock: totalStock,
+      sizes,
     });
+
+    // Reset form
+    setNewInv({ sku: "", name: "", hpp: "", price: "" });
+    setSizeStocks(Object.fromEntries(SIZES.map(s => [s, ""])));
   };
 
   return (
@@ -48,94 +71,100 @@ export default function InventoryTab({
 
       <form
         onSubmit={handleAdd}
-        className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-6 gap-4 items-end"
+        className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4"
       >
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase">
-            SKU
-          </label>
-          <input
-            required
-            value={newInv.sku}
-            onChange={(e) => setNewInv({ ...newInv, sku: e.target.value })}
-            placeholder="TS-001"
-            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-        <div className="space-y-1 md:col-span-2">
-          <label className="text-xs font-semibold text-gray-500 uppercase">
-            Nama Produk
-          </label>
-          <input
-            required
-            value={newInv.name}
-            onChange={(e) => setNewInv({ ...newInv, name: e.target.value })}
-            placeholder="Kaos Polos Hitam"
-            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase">
-            HPP (Modal)
-          </label>
-          <input
-            required
-            type="number"
-            value={newInv.hpp}
-            onChange={(e) => setNewInv({ ...newInv, hpp: e.target.value })}
-            placeholder="40000"
-            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase">
-            Harga Jual
-          </label>
-          <input
-            required
-            type="number"
-            value={newInv.price}
-            onChange={(e) => setNewInv({ ...newInv, price: e.target.value })}
-            placeholder="85000"
-            className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-gray-500 uppercase">
-            Stok Awal
-          </label>
-          <div className="flex space-x-2">
+        {/* Baris 1: Info produk */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">SKU</label>
+            <input
+              required
+              value={newInv.sku}
+              onChange={(e) => setNewInv({ ...newInv, sku: e.target.value })}
+              placeholder="TS-001"
+              className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div className="space-y-1 md:col-span-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Nama Produk</label>
+            <input
+              required
+              value={newInv.name}
+              onChange={(e) => setNewInv({ ...newInv, name: e.target.value })}
+              placeholder="Kaos Polos Hitam"
+              className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">HPP (Modal)</label>
             <input
               required
               type="number"
-              value={newInv.stock}
-              onChange={(e) => setNewInv({ ...newInv, stock: e.target.value })}
-              placeholder="100"
+              value={newInv.hpp}
+              onChange={(e) => setNewInv({ ...newInv, hpp: e.target.value })}
+              placeholder="40000"
               className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
             />
-            <button
-              type="submit"
-              className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              <Plus size={20} />
-            </button>
           </div>
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase">Harga Jual</label>
+            <input
+              required
+              type="number"
+              value={newInv.price}
+              onChange={(e) => setNewInv({ ...newInv, price: e.target.value })}
+              placeholder="85000"
+              className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Baris 2: Stok per ukuran */}
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-gray-500 uppercase">Stok per Ukuran</label>
+          <div className="grid grid-cols-5 gap-2">
+            {SIZES.map(size => (
+              <div key={size} className="space-y-1">
+                <label className="block text-center text-xs font-bold text-blue-600 bg-blue-50 rounded py-0.5">{size}</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={sizeStocks[size]}
+                  onChange={(e) => handleSizeChange(size, e.target.value)}
+                  placeholder="0"
+                  className="w-full border rounded-lg p-2 text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 transition flex items-center gap-2 text-sm font-medium"
+          >
+            <Plus size={16} />
+            Tambah Barang
+          </button>
         </div>
       </form>
 
+      {/* Tabel */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[800px]">
+        <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-sm border-b">
               <th className="p-4 font-medium">SKU</th>
               <th className="p-4 font-medium">Nama Produk</th>
               <th className="p-4 font-medium text-right">HPP</th>
               <th className="p-4 font-medium text-right">Harga Jual</th>
-              <th className="p-4 font-medium text-center">Stok Awal</th>
-              <th className="p-4 font-medium text-center text-red-500">Laku</th>
-              <th className="p-4 font-medium text-center text-green-600">
-                Tersedia
-              </th>
+              {/* Kolom stok per ukuran */}
+              {SIZES.map(size => (
+                <th key={size} className="p-4 font-medium text-center text-blue-600">{size}</th>
+              ))}
+              <th className="p-4 font-medium text-center text-red-500">Total Laku</th>
+              <th className="p-4 font-medium text-center text-green-600">Total Sisa</th>
               <th className="p-4 font-medium text-center">Aksi</th>
             </tr>
           </thead>
@@ -144,15 +173,25 @@ export default function InventoryTab({
               <tr key={item.sku} className="hover:bg-gray-50 transition">
                 <td className="p-4 font-medium">{item.sku}</td>
                 <td className="p-4">{item.name}</td>
-                <td className="p-4 text-right text-gray-500">
-                  {formatRp(item.hpp)}
-                </td>
+                <td className="p-4 text-right text-gray-500">{formatRp(item.hpp)}</td>
                 <td className="p-4 text-right">{formatRp(item.price)}</td>
-                <td className="p-4 text-center">{item.stock}</td>
+                {SIZES.map(size => {
+                  const sizeData = item.sizes?.find((s: any) => s.size === size);
+                  const soldForSize = item.soldBySize?.[size] || 0;
+                  const remaining = (sizeData?.stock || 0) - soldForSize;
+                  return (
+                    <td key={size} className="p-4 text-center">
+                      <div className="flex flex-col items-center leading-tight">
+                        <span className={`font-bold ${remaining <= 0 ? 'text-red-500' : remaining <= 3 ? 'text-yellow-500' : 'text-gray-700'}`}>
+                          {remaining}
+                        </span>
+                        <span className="text-[10px] text-gray-400">/{sizeData?.stock || 0}</span>
+                      </div>
+                    </td>
+                  );
+                })}
                 <td className="p-4 text-center text-red-500">{item.sold}</td>
-                <td className="p-4 text-center font-bold text-green-600">
-                  {item.current}
-                </td>
+                <td className="p-4 text-center font-bold text-green-600">{item.current}</td>
                 <td className="p-4 text-center">
                   <button
                     onClick={() => onDeleteInventory(item.sku)}
@@ -165,7 +204,7 @@ export default function InventoryTab({
             ))}
             {Object.keys(metrics.stockMap).length === 0 && (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400">
+                <td colSpan={8 + SIZES.length} className="p-8 text-center text-gray-400">
                   Belum ada barang di database.
                 </td>
               </tr>
