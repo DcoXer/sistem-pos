@@ -44,12 +44,11 @@ export default function App() {
   // ==============================
 
   const handleExportData = () => {
-    // ===== FILTER BULAN INI =====
     const salesThisMonth = storeData.sales.filter((s) => getThisMonth(s.date));
     const expensesThisMonth = storeData.expenses.filter((e) =>
       getThisMonth(e.date),
     );
-    // ===== PENJUALAN =====
+
     const salesSheet = salesThisMonth.map((s) => ({
       Tanggal: s.date,
       Invoice: s.invoice,
@@ -57,7 +56,6 @@ export default function App() {
       Qty: s.qty,
     }));
 
-    // ===== INVENTORY =====
     const inventorySheet = storeData.inventory.map((i) => ({
       SKU: i.sku,
       Nama: i.name,
@@ -69,7 +67,6 @@ export default function App() {
       Nilai_Stok: i.stock * i.hpp,
     }));
 
-    // ===== EXPENSES =====
     const expenseSheet = expensesThisMonth.map((e) => ({
       Tanggal: e.date,
       Kategori: e.category,
@@ -77,7 +74,6 @@ export default function App() {
       Jumlah: e.amount,
     }));
 
-    // ===== PROFIT LOSS =====
     const profitSheet = [
       { Item: "Total Omzet", Nilai: metrics.totalRevenue },
       { Item: "Total HPP", Nilai: metrics.totalHppSold },
@@ -105,7 +101,7 @@ export default function App() {
       XLSX.utils.json_to_sheet(expenseSheet),
       "Pengeluaran",
     );
-    
+
     XLSX.utils.book_append_sheet(
       workbook,
       XLSX.utils.json_to_sheet(profitSheet),
@@ -114,25 +110,6 @@ export default function App() {
 
     XLSX.writeFile(workbook, "laporan-toko.xlsx");
   };
-
-  // ==============================
-  // FORM STATE
-  // ==============================
-
-  // const [setNewInv] = useState({
-  //   sku: "",
-  //   name: "",
-  //   hpp: "",
-  //   price: "",
-  //   stock: "",
-  // });
-
-  // const [setNewSale] = useState({
-  //   date: "",
-  //   invoice: "",
-  //   sku: "",
-  //   qty: "",
-  // });
 
   const [newExp, setNewExp] = useState({
     date: "",
@@ -174,32 +151,14 @@ export default function App() {
 
   const handleAddInventory = (item: InventoryItem) => {
     const updatedInv = [...(storeData.inventory || []), item];
-
-    const newData = {
-      ...storeData,
-      inventory: updatedInv,
-    };
-
+    const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
     saveToCloud(newData);
-
-    // setNewInv({
-    //   sku: "",
-    //   name: "",
-    //   hpp: "",
-    //   price: "",
-    //   stock: "",
-    // });
   };
 
   const handleDeleteInventory = (sku: string) => {
     const updatedInv = storeData.inventory.filter((i) => i.sku !== sku);
-
-    const newData = {
-      ...storeData,
-      inventory: updatedInv,
-    };
-
+    const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
     saveToCloud(newData);
   };
@@ -218,30 +177,14 @@ export default function App() {
     };
 
     const updatedSales = [newSale, ...(storeData.sales || [])];
-
-    const newData = {
-      ...storeData,
-      sales: updatedSales,
-    };
-
+    const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
     saveToCloud(newData);
-
-    // setNewSale({
-    //   ...newSale,
-    //   invoice: "",
-    //   qty: "",
-    // });
   };
 
   const handleDeleteSale = (id: string) => {
     const updatedSales = storeData.sales.filter((s) => s.id !== id);
-
-    const newData = {
-      ...storeData,
-      sales: updatedSales,
-    };
-
+    const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
     saveToCloud(newData);
   };
@@ -260,44 +203,19 @@ export default function App() {
     };
 
     const updatedExpenses = [exp, ...(storeData.expenses || [])];
-
-    const newData = {
-      ...storeData,
-      expenses: updatedExpenses,
-    };
-
+    const newData = { ...storeData, expenses: updatedExpenses };
     setStoreData(newData);
     saveToCloud(newData);
 
-    setNewExp({
-      ...newExp,
-      desc: "",
-      amount: "",
-    });
+    setNewExp({ ...newExp, desc: "", amount: "" });
   };
 
   const handleDeleteExpense = (id: string) => {
     const updatedExpenses = storeData.expenses.filter((exp) => exp.id !== id);
-
-    const newData = {
-      ...storeData,
-      expenses: updatedExpenses,
-    };
-
+    const newData = { ...storeData, expenses: updatedExpenses };
     setStoreData(newData);
     saveToCloud(newData);
   };
-
-  // ==============================
-  // FORMAT RUPIAH
-  // ==============================
-
-  // const formatRp = (num: number) =>
-  //   new Intl.NumberFormat("id-ID", {
-  //     style: "currency",
-  //     currency: "IDR",
-  //     minimumFractionDigits: 0,
-  //   }).format(num);
 
   // ==============================
   // LOADING
@@ -320,7 +238,7 @@ export default function App() {
   // ==============================
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex bg-gray-100">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -328,7 +246,12 @@ export default function App() {
         handleLogoutStore={handleLogoutStore}
       />
 
-      <main className="flex-1 p-6">
+      {/*
+        pt-14  = ruang untuk mobile top bar (fixed, ~56px)
+        pb-16  = ruang untuk mobile bottom nav (fixed, ~64px)
+        md:pt-0 md:pb-0 = reset di desktop karena sidebar di sisi, bukan fixed top/bottom
+      */}
+      <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden">
         {activeTab === "dashboard" && (
           <DashboardTab handleExportData={handleExportData} metrics={metrics} />
         )}
