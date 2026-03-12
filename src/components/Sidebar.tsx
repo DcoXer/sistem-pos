@@ -23,7 +23,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLo
       <nav className="hidden md:flex bg-gray-900 text-white w-64 shrink-0 min-h-screen flex-col">
         <div className="p-6">
           <h1 className="text-xl font-bold tracking-wider text-blue-400">
-            MERCHANT<span className="text-white">OS</span>
+            POS<span className="text-white">{activeStore}</span>
           </h1>
           <div className="mt-2 bg-gray-800 px-3 py-2 rounded-lg border border-gray-700">
             <p className="text-[10px] text-gray-400 uppercase tracking-wider">Kode Toko Aktif</p>
@@ -65,7 +65,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLo
       {/* ===================== */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gray-900 text-white flex items-center justify-between px-4 py-3 border-b border-gray-800">
         <h1 className="text-base font-bold tracking-wider text-blue-400">
-          MERCHANT<span className="text-white">OS</span>
+          POS<span className="text-white">{activeStore}</span>
         </h1>
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs text-green-400 font-bold bg-gray-800 px-2 py-1 rounded">
