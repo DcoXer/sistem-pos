@@ -52,13 +52,45 @@ export default function App() {
       Qty: s.qty,
     }));
 
+    // Sheet restock — filter berdasarkan bulan
+    const restockSheet = (storeData.restocks || [])
+      .filter((r) => inFilterMonth(r.date))
+      .flatMap((r) => {
+        const item = storeData.inventory.find((i) => i.sku === r.sku);
+        return r.sizes
+          .filter((s) => s.stock > 0)
+          .map((s) => ({
+            Tanggal_Masuk: r.date,
+            SKU: r.sku,
+            Nama: item?.name || '-',
+            Ukuran: s.size,
+            Qty_Masuk: s.stock,
+            HPP: item?.hpp || 0,
+            Nilai_Masuk: s.stock * (item?.hpp || 0),
+            Keterangan: r.note || '-',
+          }));
+      });
+
+    // Sheet ringkasan stok — akumulasi semua waktu per SKU per ukuran
     const inventorySheet = storeData.inventory.flatMap((i) => {
       const stockData = metrics.stockMap[i.sku];
       const restockedBySize = stockData?.restockedBySize || {};
       const soldBySize = stockData?.soldBySize || {};
-      const sizes = Object.keys(restockedBySize).length > 0
-        ? Object.keys(restockedBySize)
-        : ['(semua ukuran)'];
+      const sizes = Object.keys(restockedBySize);
+
+      if (sizes.length === 0) {
+        return [{
+          SKU: i.sku,
+          Nama: i.name,
+          Ukuran: '-',
+          HPP: i.hpp,
+          Harga_Jual: i.price,
+          Total_Masuk: 0,
+          Terjual: 0,
+          Sisa_Stok: 0,
+          Nilai_Stok: 0,
+        }];
+      }
 
       return sizes.map(size => {
         const restocked = restockedBySize[size] || 0;
@@ -104,6 +136,12 @@ export default function App() {
       workbook,
       XLSX.utils.json_to_sheet(inventorySheet),
       "Stok Barang",
+    );
+
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.json_to_sheet(restockSheet.length > 0 ? restockSheet : [{ Info: "Tidak ada barang masuk di bulan ini" }]),
+      "Barang Masuk",
     );
 
     XLSX.utils.book_append_sheet(
