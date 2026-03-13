@@ -184,6 +184,15 @@ export default function App() {
     saveToCloud(newData);
   };
 
+  const handleUpdateInventory = (oldSku: string, item: InventoryItem) => {
+    const updatedInv = storeData.inventory.map((i) =>
+      i.sku === oldSku ? item : i
+    );
+    const newData = { ...storeData, inventory: updatedInv };
+    setStoreData(newData);
+    saveToCloud(newData);
+  };
+
   // ==============================
   // SALES
   // ==============================
@@ -283,6 +292,7 @@ export default function App() {
             metrics={metrics}
             onAddInventory={handleAddInventory}
             onDeleteInventory={handleDeleteInventory}
+            onUpdateInventory={handleUpdateInventory}
           />
         )}
 
