@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import type { StoreData, SaleItem } from '../types';
 import { SIZES } from '../types';
+import MonthFilter from './MonthFilter';
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
 interface SalesTabProps {
   storeData: StoreData;
   metrics: any;
+  filterMonth: string;
+  onFilterMonthChange: (val: string) => void;
   onAddSale: (sale: Omit<SaleItem, 'id'>) => void;
   onDeleteSale: (id: string) => void;
 }
 
-export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }: SalesTabProps) {
+export default function SalesTab({ storeData, metrics, filterMonth, onFilterMonthChange, onAddSale, onDeleteSale }: SalesTabProps) {
   const [newSale, setNewSale] = useState({
     date: new Date().toISOString().split('T')[0],
     invoice: '',
@@ -21,7 +24,6 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
     qty: ''
   });
 
-  // Ambil stok sisa untuk SKU + ukuran yang dipilih
   const getAvailableStock = () => {
     if (!newSale.sku || !newSale.size) return null;
     const item = metrics.stockMap[newSale.sku];
@@ -34,20 +36,16 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
   const availableStock = getAvailableStock();
 
   const handleSkuChange = (sku: string) => {
-    // Reset ukuran kalau ganti produk
     setNewSale({ ...newSale, sku, size: '', qty: '' });
   };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newSale.sku || !newSale.size || !newSale.qty) return;
-
-    // Validasi stok
     if (availableStock !== null && Number(newSale.qty) > availableStock) {
       alert(`Stok ukuran ${newSale.size} hanya tersisa ${availableStock} pcs`);
       return;
     }
-
     onAddSale({
       date: newSale.date,
       invoice: newSale.invoice,
@@ -55,17 +53,33 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
       size: newSale.size,
       qty: Number(newSale.qty),
     });
-
     setNewSale({ ...newSale, invoice: '', sku: '', size: '', qty: '' });
   };
 
+  // Filter penjualan berdasarkan bulan
+  const filteredSales = (storeData.sales || []).filter(s => {
+    const d = new Date(s.date);
+    const [fy, fm] = filterMonth.split('-').map(Number);
+    return d.getFullYear() === fy && d.getMonth() + 1 === fm;
+  });
+
+  // Total pendapatan bulan ini
+  const totalRevenue = filteredSales.reduce((sum, sale) => {
+    const item = metrics.stockMap[sale.sku];
+    return sum + (item ? item.price * sale.qty : 0);
+  }, 0);
+
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold border-b pb-2">Catat Penjualan</h2>
+      {/* Header + Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+        <h2 className="text-2xl font-bold">Catat Penjualan</h2>
+        <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
+      </div>
 
+      {/* Form tambah */}
       <form onSubmit={handleAdd} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-          {/* Tanggal */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">Tanggal</label>
             <input
@@ -75,8 +89,6 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
               className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
-
-          {/* Invoice */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">No. Invoice</label>
             <input
@@ -86,8 +98,6 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
               className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
-
-          {/* Pilih Produk */}
           <div className="space-y-1 md:col-span-2">
             <label className="text-xs font-semibold text-gray-500 uppercase">Pilih Barang</label>
             <select
@@ -104,8 +114,6 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
               ))}
             </select>
           </div>
-
-          {/* Pilih Ukuran */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">Ukuran</label>
             <select
@@ -129,8 +137,6 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
               })}
             </select>
           </div>
-
-          {/* Qty */}
           <div className="space-y-1">
             <label className="text-xs font-semibold text-gray-500 uppercase">
               Qty {availableStock !== null && <span className="text-green-600 normal-case font-normal">(maks: {availableStock})</span>}
@@ -153,6 +159,12 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
         </div>
       </form>
 
+      {/* Summary bar */}
+      <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-xl px-5 py-3">
+        <span className="text-sm text-gray-500">{filteredSales.length} transaksi</span>
+        <span className="text-sm font-bold text-green-700">Total: {formatRp(totalRevenue)}</span>
+      </div>
+
       {/* Tabel */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[800px]">
@@ -168,7 +180,7 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
             </tr>
           </thead>
           <tbody className="text-sm divide-y divide-gray-100">
-            {(storeData.sales || []).map((sale) => {
+            {filteredSales.map((sale) => {
               const item = metrics.stockMap[sale.sku];
               return (
                 <tr key={sale.id} className="hover:bg-gray-50 transition">
@@ -194,9 +206,9 @@ export default function SalesTab({ storeData, metrics, onAddSale, onDeleteSale }
                 </tr>
               );
             })}
-            {(!storeData.sales || storeData.sales.length === 0) && (
+            {filteredSales.length === 0 && (
               <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-400">Belum ada data penjualan.</td>
+                <td colSpan={7} className="p-8 text-center text-gray-400">Tidak ada penjualan di bulan ini.</td>
               </tr>
             )}
           </tbody>
