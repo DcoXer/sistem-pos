@@ -4,25 +4,30 @@ import { db } from '../firebase';
 import type { StoreData } from '../types';
 import type { User } from 'firebase/auth';
 
-const emptyData: StoreData = { inventory: [], sales: [], expenses: [] };
+const emptyData: StoreData = {
+  inventory: [],
+  restocks: [],
+  sales: [],
+  expenses: []
+};
 
 export function useStoreData(user: User | null, activeStore: string) {
   const [storeData, setStoreData] = useState<StoreData>(emptyData);
 
   useEffect(() => {
     if (!user || !activeStore) {
-        setStoreData(emptyData);
-        return;
-    };
+      setStoreData(emptyData);
+      return;
+    }
 
-    // RULE: Strict Paths -> public/data/stores
     const docRef = doc(db, 'stores', activeStore);
-    
+
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as StoreData;
         setStoreData({
           inventory: data.inventory || [],
+          restocks: data.restocks || [],   // backward compat: data lama ga punya restocks
           sales: data.sales || [],
           expenses: data.expenses || []
         });
