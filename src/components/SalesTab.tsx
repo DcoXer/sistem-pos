@@ -28,9 +28,9 @@ export default function SalesTab({ storeData, metrics, filterMonth, onFilterMont
     if (!newSale.sku || !newSale.size) return null;
     const item = metrics.stockMap[newSale.sku];
     if (!item) return null;
-    const sizeData = item.sizes?.find((s: any) => s.size === newSale.size);
-    const soldForSize = item.soldBySize?.[newSale.size] || 0;
-    return (sizeData?.stock || 0) - soldForSize;
+    const restocked = item.restockedBySize?.[newSale.size] || 0;
+    const sold = item.soldBySize?.[newSale.size] || 0;
+    return restocked - sold;
   };
 
   const availableStock = getAvailableStock();
@@ -126,9 +126,9 @@ export default function SalesTab({ storeData, metrics, filterMonth, onFilterMont
               <option value="" disabled>-- Ukuran --</option>
               {SIZES.map(size => {
                 const item = metrics.stockMap[newSale.sku];
-                const sizeData = item?.sizes?.find((s: any) => s.size === size);
-                const soldForSize = item?.soldBySize?.[size] || 0;
-                const remaining = (sizeData?.stock || 0) - soldForSize;
+                const restocked = item?.restockedBySize?.[size] || 0;
+                const sold = item?.soldBySize?.[size] || 0;
+                const remaining = restocked - sold;
                 return (
                   <option key={size} value={size} disabled={remaining <= 0}>
                     {size} {remaining <= 0 ? '(Habis)' : `(Sisa: ${remaining})`}
