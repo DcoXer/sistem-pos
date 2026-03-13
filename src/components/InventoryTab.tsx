@@ -16,7 +16,6 @@ interface InventoryTabProps {
   onDeleteInventory: (sku: string) => void;
 }
 
-const emptySizes = () => SIZES.map(size => ({ size, stock: 0 }));
 
 export default function InventoryTab({
   metrics,
