@@ -18,6 +18,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeStore, setActiveStore] = useState("");
+  const [filterMonth, setFilterMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
 
   const { storeData, setStoreData, saveToCloud } = useStoreData(
     user,
@@ -290,6 +294,8 @@ export default function App() {
         {activeTab === "stok" && (
           <InventoryTab
             metrics={metrics}
+            filterMonth={filterMonth}
+            onFilterMonthChange={setFilterMonth}
             onAddInventory={handleAddInventory}
             onDeleteInventory={handleDeleteInventory}
             onUpdateInventory={handleUpdateInventory}
@@ -300,6 +306,8 @@ export default function App() {
           <SalesTab
             storeData={storeData}
             metrics={metrics}
+            filterMonth={filterMonth}
+            onFilterMonthChange={setFilterMonth}
             onAddSale={handleAddSale}
             onDeleteSale={handleDeleteSale}
           />
@@ -308,6 +316,8 @@ export default function App() {
         {activeTab === "pengeluaran" && (
           <ExpensesTab
             storeData={storeData}
+            filterMonth={filterMonth}
+            onFilterMonthChange={setFilterMonth}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
           />
