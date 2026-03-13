@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, Pencil, X, Check } from "lucide-react";
 import type { InventoryItem } from "../types";
 import { SIZES } from "../types";
+import MonthFilter from "./MonthFilter";
 
 const formatRp = (num: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -12,14 +13,12 @@ const formatRp = (num: number) =>
 
 interface InventoryTabProps {
   metrics: any;
+  filterMonth: string;
+  onFilterMonthChange: (val: string) => void;
   onAddInventory: (item: InventoryItem) => void;
   onDeleteInventory: (sku: string) => void;
   onUpdateInventory: (oldSku: string, item: InventoryItem) => void;
 }
-
-// ==============================
-// EDIT MODAL
-// ==============================
 
 interface EditModalProps {
   item: InventoryItem;
@@ -36,7 +35,6 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
     price: String(item.price),
   });
 
-  // Stok per ukuran — value adalah stok AWAL (bukan sisa)
   const [sizeStocks, setSizeStocks] = useState<Record<string, string>>(
     Object.fromEntries(
       SIZES.map(size => {
@@ -48,14 +46,11 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-
     const sizes = SIZES.map(size => ({
       size,
       stock: Number(sizeStocks[size]) || 0,
     }));
-
     const totalStock = sizes.reduce((sum, s) => sum + s.stock, 0);
-
     onSave(item.sku, {
       sku: form.sku,
       name: form.name,
@@ -67,10 +62,8 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
   };
 
   return (
-    // Backdrop
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="font-bold text-lg">Edit Barang</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -79,7 +72,6 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
         </div>
 
         <form onSubmit={handleSave} className="p-6 space-y-5">
-          {/* SKU & Nama */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-gray-500 uppercase">SKU</label>
@@ -101,7 +93,6 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
             </div>
           </div>
 
-          {/* HPP & Harga Jual */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-xs font-semibold text-gray-500 uppercase">HPP (Modal)</label>
@@ -125,7 +116,6 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
             </div>
           </div>
 
-          {/* Stok per Ukuran */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-gray-500 uppercase">Stok Awal per Ukuran</label>
             <div className="grid grid-cols-5 gap-2">
@@ -139,7 +129,7 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
                     </label>
                     <input
                       type="number"
-                      min={sold} // stok awal minimal = yang udah terjual
+                      min={sold}
                       value={sizeStocks[size]}
                       onChange={e => setSizeStocks(prev => ({ ...prev, [size]: e.target.value }))}
                       className="w-full border rounded-lg p-2 text-sm text-center focus:ring-2 focus:ring-blue-500 outline-none"
@@ -154,7 +144,6 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
             <p className="text-[11px] text-gray-400">* Input stok awal. Sisa dihitung otomatis dari penjualan.</p>
           </div>
 
-          {/* Actions */}
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
@@ -177,12 +166,10 @@ function EditModal({ item, soldBySize, onClose, onSave }: EditModalProps) {
   );
 }
 
-// ==============================
-// MAIN COMPONENT
-// ==============================
-
 export default function InventoryTab({
   metrics,
+  filterMonth,
+  onFilterMonthChange,
   onAddInventory,
   onDeleteInventory,
   onUpdateInventory,
@@ -195,14 +182,11 @@ export default function InventoryTab({
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     const sizes = SIZES.map(size => ({
       size,
       stock: Number(sizeStocks[size]) || 0,
     }));
-
     const totalStock = sizes.reduce((sum, s) => sum + s.stock, 0);
-
     onAddInventory({
       sku: newInv.sku,
       name: newInv.name,
@@ -211,16 +195,17 @@ export default function InventoryTab({
       stock: totalStock,
       sizes,
     });
-
     setNewInv({ sku: "", name: "", hpp: "", price: "" });
     setSizeStocks(Object.fromEntries(SIZES.map(s => [s, ""])));
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-2xl font-bold border-b pb-2">Database & Stok Barang</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+        <h2 className="text-2xl font-bold">Database & Stok Barang</h2>
+        <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
+      </div>
 
-      {/* Form Tambah */}
       <form
         onSubmit={handleAdd}
         className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4"
@@ -300,7 +285,6 @@ export default function InventoryTab({
         </div>
       </form>
 
-      {/* Tabel */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[900px]">
           <thead>
@@ -372,7 +356,6 @@ export default function InventoryTab({
         </table>
       </div>
 
-      {/* Edit Modal */}
       {editingItem && (
         <EditModal
           item={editingItem}
