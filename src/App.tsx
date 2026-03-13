@@ -30,7 +30,7 @@ export default function App() {
 
   const metrics = useMetrics(storeData);
 
-    // ==============================
+  // ==============================
   // FILTER SALES BY MONTH
   // ==============================
 
@@ -140,7 +140,7 @@ export default function App() {
     desc: "",
     amount: "",
   });
-  
+
   // ==============================
   // LOAD STORE
   // ==============================
