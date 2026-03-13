@@ -31,19 +31,6 @@ export default function App() {
   const metrics = useMetrics(storeData);
 
   // ==============================
-  // FILTER SALES BY MONTH
-  // ==============================
-
-  const getThisMonth = (dateStr: string) => {
-    const d = new Date(dateStr);
-    const now = new Date();
-
-    return (
-      d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-    );
-  };
-
-  // ==============================
   // EXPORT DATA
   // ==============================
 
