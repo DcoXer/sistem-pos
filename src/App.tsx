@@ -30,7 +30,7 @@ export default function App() {
 
   const metrics = useMetrics(storeData);
 
-  // ==============================
+    // ==============================
   // FILTER SALES BY MONTH
   // ==============================
 
@@ -48,10 +48,14 @@ export default function App() {
   // ==============================
 
   const handleExportData = () => {
-    const salesThisMonth = storeData.sales.filter((s) => getThisMonth(s.date));
-    const expensesThisMonth = storeData.expenses.filter((e) =>
-      getThisMonth(e.date),
-    );
+    const [fy, fm] = filterMonth.split('-').map(Number);
+    const inFilterMonth = (dateStr: string) => {
+      const d = new Date(dateStr);
+      return d.getFullYear() === fy && d.getMonth() + 1 === fm;
+    };
+
+    const salesThisMonth = storeData.sales.filter((s) => inFilterMonth(s.date));
+    const expensesThisMonth = storeData.expenses.filter((e) => inFilterMonth(e.date));
 
     const salesSheet = salesThisMonth.map((s) => ({
       Tanggal: s.date,
@@ -136,7 +140,7 @@ export default function App() {
     desc: "",
     amount: "",
   });
-
+  
   // ==============================
   // LOAD STORE
   // ==============================
