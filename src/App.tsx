@@ -11,7 +11,7 @@ import InventoryTab from "./components/InventoryTab";
 import SalesTab from "./components/SalesTab";
 import ExpensesTab from "./components/ExpensesTab";
 
-import type { InventoryItem, SaleItem, ExpenseItem } from "./types";
+import type { InventoryItem, RestockItem, SaleItem, ExpenseItem } from "./types";
 
 export default function App() {
   const { user, isInitializing } = useAuth();
@@ -63,33 +63,27 @@ export default function App() {
 
     const inventorySheet = storeData.inventory.flatMap((i) => {
       const stockData = metrics.stockMap[i.sku];
-      if (i.sizes && i.sizes.length > 0) {
-        return i.sizes.map((s) => {
-          const soldForSize = stockData?.soldBySize?.[s.size] || 0;
-          return {
-            SKU: i.sku,
-            Nama: i.name,
-            Ukuran: s.size,
-            HPP: i.hpp,
-            Harga_Jual: i.price,
-            Stok_Awal: s.stock,
-            Laku: soldForSize,
-            Sisa_Stok: s.stock - soldForSize,
-            Nilai_Stok: s.stock * i.hpp,
-          };
-        });
-      }
-      return [{
-        SKU: i.sku,
-        Nama: i.name,
-        Ukuran: '-',
-        HPP: i.hpp,
-        Harga_Jual: i.price,
-        Stok_Awal: i.stock,
-        Laku: stockData?.sold || 0,
-        Sisa_Stok: i.stock - (stockData?.sold || 0),
-        Nilai_Stok: i.stock * i.hpp,
-      }];
+      const restockedBySize = stockData?.restockedBySize || {};
+      const soldBySize = stockData?.soldBySize || {};
+      const sizes = Object.keys(restockedBySize).length > 0
+        ? Object.keys(restockedBySize)
+        : ['(semua ukuran)'];
+
+      return sizes.map(size => {
+        const restocked = restockedBySize[size] || 0;
+        const sold = soldBySize[size] || 0;
+        return {
+          SKU: i.sku,
+          Nama: i.name,
+          Ukuran: size,
+          HPP: i.hpp,
+          Harga_Jual: i.price,
+          Total_Masuk: restocked,
+          Terjual: sold,
+          Sisa_Stok: restocked - sold,
+          Nilai_Stok: (restocked - sold) * i.hpp,
+        };
+      });
     });
 
     const expenseSheet = expensesThisMonth.map((e) => ({
@@ -197,6 +191,24 @@ export default function App() {
     saveToCloud(newData);
   };
 
+  const handleAddRestock = (restock: Omit<RestockItem, "id">) => {
+    const newRestock: RestockItem = {
+      id: Date.now().toString(),
+      ...restock,
+    };
+    const updatedRestocks = [newRestock, ...(storeData.restocks || [])];
+    const newData = { ...storeData, restocks: updatedRestocks };
+    setStoreData(newData);
+    saveToCloud(newData);
+  };
+
+  const handleDeleteRestock = (id: string) => {
+    const updatedRestocks = (storeData.restocks || []).filter((r) => r.id !== id);
+    const newData = { ...storeData, restocks: updatedRestocks };
+    setStoreData(newData);
+    saveToCloud(newData);
+  };
+
   // ==============================
   // SALES
   // ==============================
@@ -294,11 +306,14 @@ export default function App() {
         {activeTab === "stok" && (
           <InventoryTab
             metrics={metrics}
+            storeData={storeData}
             filterMonth={filterMonth}
             onFilterMonthChange={setFilterMonth}
             onAddInventory={handleAddInventory}
             onDeleteInventory={handleDeleteInventory}
             onUpdateInventory={handleUpdateInventory}
+            onAddRestock={handleAddRestock}
+            onDeleteRestock={handleDeleteRestock}
           />
         )}
 
