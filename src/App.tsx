@@ -159,6 +159,7 @@ export default function App() {
 
     setStoreData({
       inventory: [],
+      restocks: [],
       sales: [],
       expenses: [],
     });
