@@ -53,19 +53,40 @@ export default function App() {
       Tanggal: s.date,
       Invoice: s.invoice,
       SKU: s.sku,
+      Ukuran: s.size || '-',
       Qty: s.qty,
     }));
 
-    const inventorySheet = storeData.inventory.map((i) => ({
-      SKU: i.sku,
-      Nama: i.name,
-      HPP: i.hpp,
-      Harga_Jual: i.price,
-      Stok_Awal: i.stock,
-      Laku: metrics.stockMap[i.sku]?.sold || 0,
-      Sisa_Stok: i.stock - (metrics.stockMap[i.sku]?.sold || 0),
-      Nilai_Stok: i.stock * i.hpp,
-    }));
+    const inventorySheet = storeData.inventory.flatMap((i) => {
+      const stockData = metrics.stockMap[i.sku];
+      if (i.sizes && i.sizes.length > 0) {
+        return i.sizes.map((s) => {
+          const soldForSize = stockData?.soldBySize?.[s.size] || 0;
+          return {
+            SKU: i.sku,
+            Nama: i.name,
+            Ukuran: s.size,
+            HPP: i.hpp,
+            Harga_Jual: i.price,
+            Stok_Awal: s.stock,
+            Laku: soldForSize,
+            Sisa_Stok: s.stock - soldForSize,
+            Nilai_Stok: s.stock * i.hpp,
+          };
+        });
+      }
+      return [{
+        SKU: i.sku,
+        Nama: i.name,
+        Ukuran: '-',
+        HPP: i.hpp,
+        Harga_Jual: i.price,
+        Stok_Awal: i.stock,
+        Laku: stockData?.sold || 0,
+        Sisa_Stok: i.stock - (stockData?.sold || 0),
+        Nilai_Stok: i.stock * i.hpp,
+      }];
+    });
 
     const expenseSheet = expensesThisMonth.map((e) => ({
       Tanggal: e.date,
