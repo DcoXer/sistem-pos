@@ -6,13 +6,21 @@ export interface SizeStock {
   stock: number;
 }
 
+// Master produk — tidak lagi menyimpan stok (stok dihitung dari restock entries)
 export interface InventoryItem {
   sku: string;
   name: string;
   hpp: number;
   price: number;
-  stock: number;       // total stok awal (sum of all sizes)
-  sizes: SizeStock[];  // stok per ukuran
+}
+
+// Setiap kali restock, tambah entry baru
+export interface RestockItem {
+  id: string;
+  sku: string;
+  date: string;         // tanggal masuk barang
+  sizes: SizeStock[];   // stok per ukuran yang masuk
+  note?: string;        // opsional: keterangan restock
 }
 
 export interface SaleItem {
@@ -21,7 +29,7 @@ export interface SaleItem {
   invoice: string;
   sku: string;
   qty: number;
-  size: Size; // ukuran yang terjual
+  size: Size;
 }
 
 export interface ExpenseItem {
@@ -34,6 +42,7 @@ export interface ExpenseItem {
 
 export interface StoreData {
   inventory: InventoryItem[];
+  restocks: RestockItem[];
   sales: SaleItem[];
   expenses: ExpenseItem[];
 }
