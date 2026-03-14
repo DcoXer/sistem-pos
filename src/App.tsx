@@ -11,7 +11,7 @@ import InventoryTab from "./components/InventoryTab";
 import SalesTab from "./components/SalesTab";
 import ExpensesTab from "./components/ExpensesTab";
 
-import type { InventoryItem, RestockItem, SaleItem, ExpenseItem } from "./types";
+import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem } from "./types";
 
 export default function App() {
   const { user, isInitializing } = useAuth();
@@ -251,6 +251,7 @@ export default function App() {
       sku: sale.sku,
       qty: Number(sale.qty),
       size: sale.size,
+      status: sale.status || 'selesai',
     };
 
     const updatedSales = [newSale, ...(storeData.sales || [])];
@@ -261,6 +262,15 @@ export default function App() {
 
   const handleDeleteSale = (id: string) => {
     const updatedSales = storeData.sales.filter((s) => s.id !== id);
+    const newData = { ...storeData, sales: updatedSales };
+    setStoreData(newData);
+    saveToCloud(newData);
+  };
+
+  const handleUpdateSaleStatus = (id: string, status: SaleStatus) => {
+    const updatedSales = storeData.sales.map((s) =>
+      s.id === id ? { ...s, status } : s
+    );
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
     saveToCloud(newData);
@@ -355,6 +365,7 @@ export default function App() {
             onFilterMonthChange={setFilterMonth}
             onAddSale={handleAddSale}
             onDeleteSale={handleDeleteSale}
+            onUpdateSaleStatus={handleUpdateSaleStatus}
           />
         )}
 
