@@ -131,14 +131,14 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         </div>
 
         <h1 className="text-2xl font-bold mb-2">
-          MerchantOS <span className="text-blue-600">Cloud</span>
+          POS <span className="text-blue-600">Cloud</span>
         </h1>
 
         {/* ===== STEP 1: INPUT KODE TOKO ===== */}
         {step === 'input_code' && (
           <>
             <p className="text-gray-500 text-sm mb-8">
-              Masukkan Kode Toko untuk sinkronisasi data dengan partner bisnis lu secara real-time.
+              Masukkan Kode Toko untuk sinkronisasi data.
             </p>
             <form onSubmit={handleCheckStore} className="space-y-4 text-left">
               <div>
@@ -154,7 +154,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
                     required
                     value={storeCodeInput}
                     onChange={e => setStoreCodeInput(e.target.value.toUpperCase())}
-                    placeholder="Contoh: BAJU-KITA-123"
+                    placeholder="Kode Toko"
                     className="pl-10 w-full border-2 border-gray-200 rounded-xl p-3 text-lg font-bold tracking-widest focus:ring-0 focus:border-blue-500 outline-none transition"
                   />
                 </div>
