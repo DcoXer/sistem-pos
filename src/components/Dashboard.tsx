@@ -1,6 +1,6 @@
-import { Download, DollarSign, TrendingUp, TrendingDown, Box, Package, AlertTriangle, Clock, CreditCard } from 'lucide-react';
+import { Download, DollarSign, TrendingUp, TrendingDown, Package, AlertTriangle, Clock, CreditCard } from 'lucide-react';
 import MonthFilter from './MonthFilter';
-import type { StoreData, SaleStatus } from '../types';
+import type { StoreData } from '../types';
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
@@ -62,10 +62,6 @@ export default function DashboardTab({
     const dp = s.status === 'dp' ? (s.dpAmount || 0) : 0;
     return sum + (total - dp);
   }, 0);
-
-  const piutangThisMonth = salesThisMonth.filter(s =>
-    (s.status || 'selesai') !== 'selesai'
-  );
 
   // ==============================
   // GRAFIK OMZET 6 BULAN TERAKHIR
