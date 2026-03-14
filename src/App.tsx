@@ -64,8 +64,6 @@ export default function App() {
 
     // ===== SHEET 1: PENJUALAN =====
     const salesSheet = [
-      { A: `LAPORAN PENJUALAN — ${bulanLabel}` },
-      {},
       ...salesThisMonth.map((s) => {
         const invItem = storeData.inventory.find((i) => i.sku === s.sku);
         const total = invItem ? invItem.price * s.qty : 0;
@@ -107,8 +105,6 @@ export default function App() {
 
     // ===== SHEET 2: RINGKASAN STOK =====
     const inventorySheet = [
-      { A: 'RINGKASAN STOK BARANG (Akumulatif)' },
-      {},
       ...storeData.inventory.flatMap((i) => {
         const stockData = metrics.stockMap[i.sku];
         const restockedBySize = stockData?.restockedBySize || {};
@@ -152,8 +148,6 @@ export default function App() {
     const restocksThisMonth = (storeData.restocks || []).filter((r) => inFilterMonth(r.date));
     const restockSheet = restocksThisMonth.length > 0
       ? [
-          { A: `BARANG MASUK — ${bulanLabel}` },
-          {},
           ...restocksThisMonth.flatMap((r) => {
             const invItem = storeData.inventory.find((i) => i.sku === r.sku);
             return r.sizes
@@ -188,8 +182,6 @@ export default function App() {
 
     // ===== SHEET 4: PENGELUARAN =====
     const expenseSheet = [
-      { A: `LAPORAN PENGELUARAN — ${bulanLabel}` },
-      {},
       ...expensesThisMonth.map((e) => ({
         Tanggal: fmtDate(e.date),
         Kategori: e.category,
@@ -207,8 +199,6 @@ export default function App() {
 
     // ===== SHEET 5: LABA RUGI =====
     const profitSheet = [
-      { Keterangan: `LAPORAN LABA RUGI — ${bulanLabel}`, Nominal: '' },
-      { Keterangan: '', Nominal: '' },
       { Keterangan: 'PENDAPATAN', Nominal: '' },
       { Keterangan: 'Total Omzet (semua order)', Nominal: rp(metrics.totalRevenue) },
       { Keterangan: '', Nominal: '' },
@@ -223,13 +213,22 @@ export default function App() {
       { Keterangan: 'LABA BERSIH', Nominal: rp(metrics.netProfit) },
     ];
 
+    // Helper: buat sheet dengan judul di baris 1, lalu header + data mulai baris 3
+    const makeSheet = (title: string, rows: Record<string, any>[]) => {
+      if (rows.length === 0) rows = [{}];
+      const ws = XLSX.utils.json_to_sheet([{}], { skipHeader: true }); // baris 1: judul
+      XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
+      XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });           // baris 3: header + data
+      return ws;
+    };
+
     const workbook = XLSX.utils.book_new();
 
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesSheet, { skipHeader: true }), "Penjualan");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(inventorySheet, { skipHeader: true }), "Stok Barang");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(restockSheet, { skipHeader: true }), "Barang Masuk");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(expenseSheet, { skipHeader: true }), "Pengeluaran");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(profitSheet, { skipHeader: false }), "Laba Rugi");
+    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENJUALAN — ${bulanLabel}`, salesSheet), "Penjualan");
+    XLSX.utils.book_append_sheet(workbook, makeSheet('RINGKASAN STOK BARANG (Akumulatif)', inventorySheet), "Stok Barang");
+    XLSX.utils.book_append_sheet(workbook, makeSheet(`BARANG MASUK — ${bulanLabel}`, restockSheet.length > 0 ? restockSheet : [{ Info: `Tidak ada barang masuk di bulan ${bulanLabel}` }]), "Barang Masuk");
+    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENGELUARAN — ${bulanLabel}`, expenseSheet), "Pengeluaran");
+    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN LABA RUGI — ${bulanLabel}`, profitSheet), "Laba Rugi");
 
     XLSX.writeFile(workbook, `laporan-${bulanLabel.replace(' ', '-').toLowerCase()}.xlsx`);
   };
