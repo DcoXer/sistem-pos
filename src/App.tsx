@@ -469,6 +469,7 @@ export default function App() {
             onUpdateInventory={handleUpdateInventory}
             onAddRestock={handleAddRestock}
             onDeleteRestock={handleDeleteRestock}
+            onUploadError={(msg) => toast.error(msg)}
           />
         )}
 
