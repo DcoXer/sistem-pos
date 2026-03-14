@@ -17,6 +17,7 @@ interface InventoryTabProps {
   onUpdateInventory: (oldSku: string, item: InventoryItem) => void;
   onAddRestock: (restock: Omit<RestockItem, "id">) => void;
   onDeleteRestock: (id: string) => void;
+  onUploadError: (msg: string) => void;
 }
 
 // ==============================
@@ -54,10 +55,11 @@ function ProductImage({ url, name, size = 'md' }: { url?: string | null; name: s
 // ==============================
 // EDIT MODAL
 // ==============================
-function EditModal({ item, onClose, onSave }: {
+function EditModal({ item, onClose, onSave, onUploadError }: {
   item: InventoryItem;
   onClose: () => void;
   onSave: (oldSku: string, updated: InventoryItem) => void;
+  onUploadError: (msg: string) => void;
 }) {
   const [form, setForm] = useState({ sku: item.sku, name: item.name, hpp: String(item.hpp), price: String(item.price) });
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -67,6 +69,11 @@ function EditModal({ item, onClose, onSave }: {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      onUploadError('Ukuran foto terlalu besar. Maksimal 2 MB.');
+      e.target.value = '';
+      return;
+    }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -76,8 +83,13 @@ function EditModal({ item, onClose, onSave }: {
     setUploading(true);
     let imageUrl = item.imageUrl;
     if (imageFile) {
-      try { imageUrl = await uploadProductImage(imageFile, form.sku); }
-      catch { alert('Gagal upload gambar.'); setUploading(false); return; }
+      try {
+        imageUrl = await uploadProductImage(imageFile, form.sku);
+      } catch {
+        setUploading(false);
+        onUploadError('Foto gagal diupload. Pastikan ukuran foto tidak lebih dari 2 MB dan koneksi internet kamu stabil.');
+        return;
+      }
     }
     onSave(item.sku, { sku: form.sku, name: form.name, hpp: Number(form.hpp), price: Number(form.price), imageUrl: imageUrl ?? undefined });
     setUploading(false);
@@ -99,10 +111,13 @@ function EditModal({ item, onClose, onSave }: {
                 ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-lg border" />
                 : <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center text-gray-300"><ImageOff size={24} /></div>
               }
-              <label className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition text-sm text-gray-500">
-                <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto'}
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-              </label>
+              <div className="space-y-1">
+                <label className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-blue-400 transition text-sm text-gray-500">
+                  <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto'}
+                  <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+                </label>
+                <p className="text-[11px] text-gray-400">Format: JPG, PNG, WEBP · Maks. 2 MB</p>
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -341,7 +356,7 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
 export default function InventoryTab({
   metrics, storeData, filterMonth, onFilterMonthChange,
   onAddInventory, onDeleteInventory, onUpdateInventory,
-  onAddRestock, onDeleteRestock,
+  onAddRestock, onDeleteRestock, onUploadError,
 }: InventoryTabProps) {
   const [newInv, setNewInv] = useState({ sku: '', name: '', hpp: '', price: '' });
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -355,6 +370,11 @@ export default function InventoryTab({
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      onUploadError('Ukuran foto terlalu besar. Maksimal 2 MB.');
+      e.target.value = '';
+      return;
+    }
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
@@ -362,12 +382,17 @@ export default function InventoryTab({
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setUploading(true);
-    let imageUrl: string | undefined;
+    let imageUrl: string | null = null;
     if (imageFile) {
-      try { imageUrl = await uploadProductImage(imageFile, newInv.sku); }
-      catch { alert('Gagal upload gambar.'); setUploading(false); return; }
+      try {
+        imageUrl = await uploadProductImage(imageFile, newInv.sku);
+      } catch {
+        setUploading(false);
+        onUploadError('Foto gagal diupload. Pastikan ukuran foto tidak lebih dari 2 MB dan koneksi internet kamu stabil.');
+        return;
+      }
     }
-    onAddInventory({ sku: newInv.sku, name: newInv.name, hpp: Number(newInv.hpp), price: Number(newInv.price), imageUrl: imageUrl || null });
+    onAddInventory({ sku: newInv.sku, name: newInv.name, hpp: Number(newInv.hpp), price: Number(newInv.price), imageUrl });
     setNewInv({ sku: '', name: '', hpp: '', price: '' });
     setImageFile(null);
     setImagePreview(undefined);
@@ -421,10 +446,13 @@ export default function InventoryTab({
               ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl border" />
               : <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-gray-300"><ImageOff size={24} /></div>
             }
-            <label className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 transition text-sm text-gray-500">
-              <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto Produk'}
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-            </label>
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-blue-400 transition text-sm text-gray-500">
+                <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto Produk'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              <p className="text-[11px] text-gray-400">Format: JPG, PNG, WEBP · Maks. 2 MB</p>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -490,6 +518,7 @@ export default function InventoryTab({
           item={editingItem}
           onClose={() => setEditingItem(null)}
           onSave={(oldSku, updated) => { onUpdateInventory(oldSku, updated); setEditingItem(null); }}
+          onUploadError={onUploadError}
         />
       )}
       {restockingItem && (
