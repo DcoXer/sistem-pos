@@ -124,7 +124,7 @@ export default function App() {
             'Total Masuk': 0,
             Terjual: 0,
             'Sisa Stok': 0,
-            'Nilai Sisa (HPP)': rp(0),
+            'Total HPP': rp(0),
           }];
         }
 
@@ -141,7 +141,7 @@ export default function App() {
             'Total Masuk': restocked,
             Terjual: sold,
             'Sisa Stok': sisa,
-            'Nilai Sisa (HPP)': rp(sisa * i.hpp),
+            'Total HPP': rp(sisa * i.hpp),
           };
         });
       }),
@@ -161,8 +161,8 @@ export default function App() {
                 'Nama Produk': invItem?.name || '-',
                 Ukuran: s.size,
                 'Qty Masuk': s.stock,
-                'HPP (Modal)': rp(invItem?.hpp || 0),
-                'Nilai Masuk': rp(s.stock * (invItem?.hpp || 0)),
+                'HPP (Masuk)': rp(invItem?.hpp || 0),
+                'Total HPP': rp(s.stock * (invItem?.hpp || 0)),
                 Keterangan: r.note || '-',
               }));
           }),
@@ -173,8 +173,8 @@ export default function App() {
             'Nama Produk': '',
             Ukuran: '',
             'Qty Masuk': restocksThisMonth.flatMap(r => r.sizes).reduce((sum, s) => sum + s.stock, 0),
-            'HPP (Modal)': '',
-            'Nilai Masuk': rp(restocksThisMonth.flatMap(r => {
+            'HPP (Masuk)': '',
+            'Total HPP': rp(restocksThisMonth.flatMap(r => {
               const inv = storeData.inventory.find(i => i.sku === r.sku);
               return r.sizes.map(s => s.stock * (inv?.hpp || 0));
             }).reduce((a, b) => a + b, 0)),
@@ -434,7 +434,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
+    <div className="min-h-screen flex bg-gray-300">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
