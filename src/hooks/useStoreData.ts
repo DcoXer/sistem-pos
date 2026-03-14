@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { StoreData } from '../types';
@@ -15,9 +15,13 @@ export function useStoreData(user: User | null, activeStore: string) {
   const [storeData, setStoreData] = useState<StoreData>(emptyData);
   const [isStoreLoading, setIsStoreLoading] = useState(false);
 
+  // Simpan password di ref — tidak trigger re-render, persist selama session
+  const passwordRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
     if (!user || !activeStore) {
       setStoreData(emptyData);
+      passwordRef.current = undefined;
       return;
     }
 
@@ -26,7 +30,13 @@ export function useStoreData(user: User | null, activeStore: string) {
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data() as StoreData;
+        const data = docSnap.data();
+
+        // Simpan password ke ref sekali saat load
+        if (data?.password) {
+          passwordRef.current = data.password;
+        }
+
         setStoreData({
           inventory: data.inventory || [],
           restocks: data.restocks || [],
@@ -51,7 +61,7 @@ export function useStoreData(user: User | null, activeStore: string) {
     if (!user || !activeStore) return;
     const docRef = doc(db, 'stores', activeStore);
 
-    // Firestore tidak bisa simpan field undefined — strip semua undefined dari inventory
+    // Clean undefined dari inventory — Firestore tidak bisa simpan undefined
     const cleanInventory = newData.inventory.map(item => ({
       sku: item.sku,
       name: item.name,
@@ -60,15 +70,17 @@ export function useStoreData(user: User | null, activeStore: string) {
       imageUrl: item.imageUrl ?? null,
     }));
 
-    // Preserve field password
-    const current = await getDoc(docRef);
-    const existingPassword = current.exists() ? current.data()?.password : undefined;
-
-    await setDoc(docRef, {
+    const payload: any = {
       ...newData,
       inventory: cleanInventory,
-      ...(existingPassword ? { password: existingPassword } : {})
-    });
+    };
+
+    // Preserve password dari ref — tidak perlu getDoc lagi
+    if (passwordRef.current) {
+      payload.password = passwordRef.current;
+    }
+
+    await setDoc(docRef, payload);
   };
 
   return { storeData, setStoreData, saveToCloud, isStoreLoading };
