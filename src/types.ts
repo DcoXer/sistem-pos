@@ -12,6 +12,7 @@ export interface InventoryItem {
   name: string;
   hpp: number;
   price: number;
+  imageUrl?: string; // opsional, URL dari Firebase Storage
 }
 
 // Setiap kali restock, tambah entry baru
