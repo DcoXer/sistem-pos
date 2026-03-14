@@ -58,7 +58,10 @@ export function useStoreData(user: User | null, activeStore: string) {
   }, [user, activeStore]);
 
   const saveToCloud = async (newData: StoreData) => {
-    if (!user || !activeStore) return;
+    if (!user || !activeStore) {
+      alert('DEBUG: saveToCloud skip - user: ' + !!user + ', store: ' + activeStore);
+      return;
+    }
     const docRef = doc(db, 'stores', activeStore);
 
     // Clean undefined dari inventory — Firestore tidak bisa simpan undefined
@@ -80,7 +83,11 @@ export function useStoreData(user: User | null, activeStore: string) {
       payload.password = passwordRef.current;
     }
 
-    await setDoc(docRef, payload);
+    try {
+      await setDoc(docRef, payload);
+    } catch (err: any) {
+      alert('DEBUG: Gagal simpan - ' + (err?.message || err?.code || 'unknown error'));
+    }
   };
 
   return { storeData, setStoreData, saveToCloud, isStoreLoading };
