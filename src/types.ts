@@ -33,6 +33,7 @@ export interface SaleItem {
   qty: number;
   size: Size;
   status: SaleStatus;
+  dpAmount?: number; // nominal DP yang sudah dibayar (hanya relevan saat status = 'dp')
 }
 
 export interface ExpenseItem {
