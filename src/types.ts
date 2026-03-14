@@ -23,6 +23,8 @@ export interface RestockItem {
   note?: string;        // opsional: keterangan restock
 }
 
+export type SaleStatus = 'pending' | 'dp' | 'selesai';
+
 export interface SaleItem {
   id: string;
   date: string;
@@ -30,6 +32,7 @@ export interface SaleItem {
   sku: string;
   qty: number;
   size: Size;
+  status: SaleStatus;
 }
 
 export interface ExpenseItem {
