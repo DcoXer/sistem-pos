@@ -58,10 +58,7 @@ export function useStoreData(user: User | null, activeStore: string) {
   }, [user, activeStore]);
 
   const saveToCloud = async (newData: StoreData) => {
-    if (!user || !activeStore) {
-      alert('DEBUG: saveToCloud skip - user: ' + !!user + ', store: ' + activeStore);
-      return;
-    }
+    if (!user || !activeStore) return;
     const docRef = doc(db, 'stores', activeStore);
 
     // Firestore tidak bisa simpan field undefined sama sekali
@@ -92,11 +89,7 @@ export function useStoreData(user: User | null, activeStore: string) {
       stripped.password = passwordRef.current;
     }
 
-    try {
-      await setDoc(docRef, stripped);
-    } catch (err: any) {
-      alert('Gagal simpan data: ' + (err?.message || err?.code || 'unknown error'));
-    }
+    await setDoc(docRef, stripped);
   };
 
   return { storeData, setStoreData, saveToCloud, isStoreLoading };
