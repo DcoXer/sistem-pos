@@ -267,9 +267,9 @@ export default function App() {
     saveToCloud(newData);
   };
 
-  const handleUpdateSaleStatus = (id: string, status: SaleStatus) => {
+  const handleUpdateSaleStatus = (id: string, status: SaleStatus, dpAmount?: number) => {
     const updatedSales = storeData.sales.map((s) =>
-      s.id === id ? { ...s, status } : s
+      s.id === id ? { ...s, status, dpAmount: status === 'dp' ? dpAmount : undefined } : s
     );
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
