@@ -13,6 +13,7 @@ const emptyData: StoreData = {
 
 export function useStoreData(user: User | null, activeStore: string) {
   const [storeData, setStoreData] = useState<StoreData>(emptyData);
+  const [isStoreLoading, setIsStoreLoading] = useState(false);
 
   useEffect(() => {
     if (!user || !activeStore) {
@@ -20,6 +21,7 @@ export function useStoreData(user: User | null, activeStore: string) {
       return;
     }
 
+    setIsStoreLoading(true);
     const docRef = doc(db, 'stores', activeStore);
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -27,7 +29,7 @@ export function useStoreData(user: User | null, activeStore: string) {
         const data = docSnap.data() as StoreData;
         setStoreData({
           inventory: data.inventory || [],
-          restocks: data.restocks || [],   // backward compat: data lama ga punya restocks
+          restocks: data.restocks || [],
           sales: data.sales || [],
           expenses: data.expenses || []
         });
@@ -35,9 +37,11 @@ export function useStoreData(user: User | null, activeStore: string) {
         setDoc(docRef, emptyData);
         setStoreData(emptyData);
       }
+      setIsStoreLoading(false);
     }, (error) => {
       console.error("Error sinkronisasi data:", error);
       alert("Koneksi terputus. Cek internet lu.");
+      setIsStoreLoading(false);
     });
 
     return () => unsubscribe();
@@ -52,5 +56,5 @@ export function useStoreData(user: User | null, activeStore: string) {
     await setDoc(docRef, { ...newData, ...(existingPassword ? { password: existingPassword } : {}) });
   };
 
-  return { storeData, setStoreData, saveToCloud };
+  return { storeData, setStoreData, saveToCloud, isStoreLoading };
 }
