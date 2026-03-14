@@ -255,7 +255,6 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
   onDelete: () => void;
   onRestock: () => void;
 }) {
-  const totalRestocked = Object.values(item.restockedBySize || {}).reduce((s: number, v: any) => s + v, 0) as number;
   const lowSizes = SIZES.filter(size => {
     const restocked = item.restockedBySize?.[size] || 0;
     const sold = item.soldBySize?.[size] || 0;
@@ -376,13 +375,6 @@ export default function InventoryTab({
       !q || item.sku.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
     );
   }, [metrics.stockMap, search]);
-
-  const [fy, fm] = filterMonth.split('-').map(Number);
-  const restockedSkusThisMonth = new Set(
-    (storeData.restocks || [])
-      .filter((r: RestockItem) => { const d = new Date(r.date); return d.getFullYear() === fy && d.getMonth() + 1 === fm; })
-      .map((r: RestockItem) => r.sku)
-  );
 
   return (
     <div className="space-y-6 animate-fade-in">
