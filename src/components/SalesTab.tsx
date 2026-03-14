@@ -21,7 +21,7 @@ interface SalesTabProps {
   onFilterMonthChange: (val: string) => void;
   onAddSale: (sale: Omit<SaleItem, 'id'>) => void;
   onDeleteSale: (id: string) => void;
-  onUpdateSaleStatus: (id: string, status: SaleStatus) => void;
+  onUpdateSaleStatus: (id: string, status: SaleStatus, dpAmount?: number) => void;
 }
 
 // ==============================
@@ -29,13 +29,23 @@ interface SalesTabProps {
 // ==============================
 interface StatusModalProps {
   sale: SaleItem;
+  totalAmount: number;
   itemName: string;
   onClose: () => void;
-  onSave: (id: string, status: SaleStatus) => void;
+  onSave: (id: string, status: SaleStatus, dpAmount?: number) => void;
 }
 
-function StatusModal({ sale, itemName, onClose, onSave }: StatusModalProps) {
-  const [selected, setSelected] = useState<SaleStatus>(sale.status);
+function StatusModal({ sale, totalAmount, itemName, onClose, onSave }: StatusModalProps) {
+  const [selected, setSelected] = useState<SaleStatus>(sale.status || 'selesai');
+  const [dpAmount, setDpAmount] = useState(String(sale.dpAmount || ''));
+
+  const sisa = totalAmount - (Number(dpAmount) || 0);
+
+  const handleSave = () => {
+    const dp = selected === 'dp' ? Number(dpAmount) || 0 : undefined;
+    onSave(sale.id, selected, dp);
+    onClose();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
@@ -50,19 +60,48 @@ function StatusModal({ sale, itemName, onClose, onSave }: StatusModalProps) {
 
         <div className="p-6 space-y-3">
           {(Object.entries(STATUS_CONFIG) as [SaleStatus, typeof STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
-            <button
-              key={key}
+            <button key={key} type="button"
               onClick={() => setSelected(key)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition ${
-                selected === key
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-100 hover:border-gray-200'
-              }`}
-            >
+                selected === key ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+              }`}>
               <span className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</span>
               {selected === key && <Check size={16} className="text-blue-500" />}
             </button>
           ))}
+
+          {/* Nominal DP — muncul hanya saat status DP */}
+          {selected === 'dp' && (
+            <div className="space-y-2 pt-1">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-500 uppercase">Nominal DP Masuk (Rp)</label>
+                <input
+                  type="number" min="0" max={totalAmount}
+                  value={dpAmount}
+                  onChange={e => setDpAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+              </div>
+              <div className="bg-blue-50 rounded-lg px-3 py-2 space-y-1 text-xs">
+                <div className="flex justify-between text-gray-500">
+                  <span>Total order</span>
+                  <span className="font-medium">{formatRp(totalAmount)}</span>
+                </div>
+                <div className="flex justify-between text-blue-700">
+                  <span>DP masuk</span>
+                  <span className="font-bold">{formatRp(Number(dpAmount) || 0)}</span>
+                </div>
+                <div className={`flex justify-between font-bold border-t border-blue-100 pt-1 ${sisa < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+                  <span>Sisa tagihan</span>
+                  <span>{formatRp(sisa < 0 ? 0 : sisa)}</span>
+                </div>
+              </div>
+              {sisa < 0 && (
+                <p className="text-xs text-red-500">DP tidak boleh melebihi total order</p>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 px-6 pb-5">
@@ -71,8 +110,9 @@ function StatusModal({ sale, itemName, onClose, onSave }: StatusModalProps) {
             Batal
           </button>
           <button
-            onClick={() => { onSave(sale.id, selected); onClose(); }}
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium">
+            onClick={handleSave}
+            disabled={selected === 'dp' && Number(dpAmount) > totalAmount}
+            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium disabled:opacity-40 disabled:cursor-not-allowed">
             <Check size={15} /> Simpan
           </button>
         </div>
@@ -90,7 +130,9 @@ export default function SalesTab({
 }: SalesTabProps) {
   const [newSale, setNewSale] = useState({
     date: new Date().toISOString().split('T')[0],
-    invoice: '', sku: '', size: '' as any, qty: '', status: 'selesai' as SaleStatus
+    invoice: '', sku: '', size: '' as any, qty: '',
+    status: 'selesai' as SaleStatus,
+    dpAmount: '',
   });
   const [editingSale, setEditingSale] = useState<SaleItem | null>(null);
 
@@ -104,6 +146,13 @@ export default function SalesTab({
   };
 
   const availableStock = getAvailableStock();
+
+  // Total harga untuk newSale (preview)
+  const newSaleTotal = (() => {
+    if (!newSale.sku || !newSale.qty) return 0;
+    const item = metrics.stockMap[newSale.sku];
+    return item ? item.price * Number(newSale.qty) : 0;
+  })();
 
   const handleSkuChange = (sku: string) => {
     setNewSale({ ...newSale, sku, size: '', qty: '' });
@@ -123,8 +172,9 @@ export default function SalesTab({
       size: newSale.size,
       qty: Number(newSale.qty),
       status: newSale.status,
+      dpAmount: newSale.status === 'dp' ? Number(newSale.dpAmount) || 0 : undefined,
     });
-    setNewSale({ ...newSale, invoice: '', sku: '', size: '', qty: '', status: 'selesai' });
+    setNewSale({ ...newSale, invoice: '', sku: '', size: '', qty: '', status: 'selesai', dpAmount: '' });
   };
 
   // Filter bulan
@@ -134,12 +184,16 @@ export default function SalesTab({
     return d.getFullYear() === fy && d.getMonth() + 1 === fm;
   });
 
-  const totalRevenue = filteredSales
-    .filter(s => s.status === 'selesai')
+  const totalLunas = filteredSales
+    .filter(s => (s.status || 'selesai') === 'selesai')
     .reduce((sum, sale) => {
       const item = metrics.stockMap[sale.sku];
       return sum + (item ? item.price * sale.qty : 0);
     }, 0);
+
+  const totalDP = filteredSales
+    .filter(s => (s.status || 'selesai') === 'dp')
+    .reduce((sum, sale) => sum + (sale.dpAmount || 0), 0);
 
   const totalAll = filteredSales.reduce((sum, sale) => {
     const item = metrics.stockMap[sale.sku];
@@ -217,36 +271,64 @@ export default function SalesTab({
           </div>
         </div>
 
-        {/* Status */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <span className="text-xs font-semibold text-gray-500 uppercase">Status:</span>
-          {(Object.entries(STATUS_CONFIG) as [SaleStatus, typeof STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
-            <button key={key} type="button"
-              onClick={() => setNewSale({ ...newSale, status: key })}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${
-                newSale.status === key
-                  ? `${cfg.bg} ${cfg.color} border-current`
-                  : 'border-gray-200 text-gray-400 hover:border-gray-300'
-              }`}>
-              {cfg.label}
-            </button>
-          ))}
+        {/* Status + DP Amount */}
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs font-semibold text-gray-500 uppercase">Status:</span>
+            {(Object.entries(STATUS_CONFIG) as [SaleStatus, typeof STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
+              <button key={key} type="button"
+                onClick={() => setNewSale({ ...newSale, status: key, dpAmount: '' })}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${
+                  newSale.status === key
+                    ? `${cfg.bg} ${cfg.color} border-current`
+                    : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                }`}>
+                {cfg.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Input DP — muncul kalau status DP */}
+          {newSale.status === 'dp' && (
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-gray-500 uppercase">Nominal DP Masuk (Rp)</label>
+                <input
+                  type="number" min="0"
+                  max={newSaleTotal || undefined}
+                  value={newSale.dpAmount}
+                  onChange={e => setNewSale({ ...newSale, dpAmount: e.target.value })}
+                  placeholder="0"
+                  className="border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-40"
+                />
+              </div>
+              {newSale.dpAmount && newSaleTotal > 0 && (
+                <div className="text-xs text-gray-500 pb-2">
+                  Sisa: <span className="font-bold text-gray-700">{formatRp(newSaleTotal - Number(newSale.dpAmount))}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </form>
 
       {/* Summary */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex justify-between items-center">
-          <span className="text-xs text-gray-500">{filteredSales.length} transaksi</span>
-          <span className="text-xs font-bold text-gray-600">Total order: {formatRp(totalAll)}</span>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+        <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400">Total Order</p>
+          <p className="text-sm font-bold text-gray-700 mt-0.5">{formatRp(totalAll)}</p>
         </div>
-        <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 flex justify-between items-center">
-          <span className="text-xs text-gray-500">Sudah lunas</span>
-          <span className="text-xs font-bold text-green-700">{formatRp(totalRevenue)}</span>
+        <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400">Sudah Lunas</p>
+          <p className="text-sm font-bold text-green-700 mt-0.5">{formatRp(totalLunas)}</p>
         </div>
-        <div className="bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3 flex justify-between items-center">
-          <span className="text-xs text-gray-500">Belum lunas</span>
-          <span className="text-xs font-bold text-yellow-700">{formatRp(totalAll - totalRevenue)}</span>
+        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400">DP Masuk</p>
+          <p className="text-sm font-bold text-blue-700 mt-0.5">{formatRp(totalDP)}</p>
+        </div>
+        <div className="bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-400">Belum Lunas</p>
+          <p className="text-sm font-bold text-yellow-700 mt-0.5">{formatRp(totalAll - totalLunas - totalDP)}</p>
         </div>
       </div>
 
@@ -261,15 +343,20 @@ export default function SalesTab({
               <th className="p-4 font-medium text-center">Ukuran</th>
               <th className="p-4 font-medium text-center">Qty</th>
               <th className="p-4 font-medium text-center">Status</th>
-              <th className="p-4 font-medium text-right text-green-600">Total</th>
+              <th className="p-4 font-medium text-right">Total</th>
+              <th className="p-4 font-medium text-right text-blue-600">DP Masuk</th>
+              <th className="p-4 font-medium text-right text-red-500">Sisa Tagihan</th>
               <th className="p-4 font-medium text-center">Aksi</th>
             </tr>
           </thead>
           <tbody className="text-sm divide-y divide-gray-100">
             {filteredSales.map((sale) => {
               const item = metrics.stockMap[sale.sku];
-              const status = sale.status || 'selesai'; // backward compat
+              const status = sale.status || 'selesai';
               const cfg = STATUS_CONFIG[status as SaleStatus];
+              const total = item ? item.price * sale.qty : 0;
+              const dp = status === 'dp' ? (sale.dpAmount || 0) : status === 'selesai' ? total : 0;
+              const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
               return (
                 <tr key={sale.id} className="hover:bg-gray-50 transition">
                   <td className="p-4">{sale.date}</td>
@@ -284,14 +371,17 @@ export default function SalesTab({
                   </td>
                   <td className="p-4 text-center font-bold">{sale.qty}</td>
                   <td className="p-4 text-center">
-                    <button
-                      onClick={() => setEditingSale(sale)}
+                    <button onClick={() => setEditingSale(sale)}
                       className={`px-2 py-1 rounded-lg text-xs font-semibold ${cfg.bg} ${cfg.color} hover:opacity-80 transition`}>
                       {cfg.label}
                     </button>
                   </td>
-                  <td className="p-4 text-right font-bold text-green-600">
-                    {item ? formatRp(item.price * sale.qty) : '-'}
+                  <td className="p-4 text-right font-bold">{item ? formatRp(total) : '-'}</td>
+                  <td className="p-4 text-right font-bold text-blue-600">
+                    {dp > 0 ? formatRp(dp) : '-'}
+                  </td>
+                  <td className="p-4 text-right font-bold text-red-500">
+                    {sisa > 0 ? formatRp(sisa) : '-'}
                   </td>
                   <td className="p-4 text-center">
                     <button onClick={() => onDeleteSale(sale.id)} className="text-red-400 hover:text-red-600">
@@ -303,7 +393,7 @@ export default function SalesTab({
             })}
             {filteredSales.length === 0 && (
               <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400">Tidak ada penjualan di bulan ini.</td>
+                <td colSpan={10} className="p-8 text-center text-gray-400">Tidak ada penjualan di bulan ini.</td>
               </tr>
             )}
           </tbody>
@@ -314,10 +404,14 @@ export default function SalesTab({
       {editingSale && (
         <StatusModal
           sale={editingSale}
+          totalAmount={(() => {
+            const item = metrics.stockMap[editingSale.sku];
+            return item ? item.price * editingSale.qty : 0;
+          })()}
           itemName={metrics.stockMap[editingSale.sku]?.name || editingSale.sku}
           onClose={() => setEditingSale(null)}
-          onSave={(id, status) => {
-            onUpdateSaleStatus(id, status);
+          onSave={(id, status, dpAmount) => {
+            onUpdateSaleStatus(id, status, dpAmount);
             setEditingSale(null);
           }}
         />
