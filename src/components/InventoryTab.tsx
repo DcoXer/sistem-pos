@@ -41,7 +41,7 @@ async function uploadProductImage(file: File, sku: string): Promise<string> {
 // ==============================
 // PRODUCT IMAGE
 // ==============================
-function ProductImage({ url, name, size = 'md' }: { url?: string; name: string; size?: 'sm' | 'md' | 'lg' }) {
+function ProductImage({ url, name, size = 'md' }: { url?: string | null; name: string; size?: 'sm' | 'md' | 'lg' }) {
   const sizeClass = { sm: 'w-10 h-10', md: 'w-full h-36', lg: 'w-full h-48' }[size];
   if (!url) return (
     <div className={`${sizeClass} bg-gray-100 rounded-lg flex items-center justify-center text-gray-300`}>
