@@ -367,7 +367,7 @@ export default function InventoryTab({
       try { imageUrl = await uploadProductImage(imageFile, newInv.sku); }
       catch { alert('Gagal upload gambar.'); setUploading(false); return; }
     }
-    onAddInventory({ sku: newInv.sku, name: newInv.name, hpp: Number(newInv.hpp), price: Number(newInv.price), imageUrl });
+    onAddInventory({ sku: newInv.sku, name: newInv.name, hpp: Number(newInv.hpp), price: Number(newInv.price), imageUrl: imageUrl || null });
     setNewInv({ sku: '', name: '', hpp: '', price: '' });
     setImageFile(null);
     setImagePreview(undefined);
