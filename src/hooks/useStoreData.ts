@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { StoreData } from '../types';
 import type { User } from 'firebase/auth';
@@ -46,7 +46,10 @@ export function useStoreData(user: User | null, activeStore: string) {
   const saveToCloud = async (newData: StoreData) => {
     if (!user || !activeStore) return;
     const docRef = doc(db, 'stores', activeStore);
-    await setDoc(docRef, newData);
+    // Preserve field password yang sudah ada — jangan di-overwrite oleh StoreData
+    const current = await getDoc(docRef);
+    const existingPassword = current.exists() ? current.data()?.password : undefined;
+    await setDoc(docRef, { ...newData, ...(existingPassword ? { password: existingPassword } : {}) });
   };
 
   return { storeData, setStoreData, saveToCloud };
