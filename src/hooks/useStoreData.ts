@@ -50,10 +50,25 @@ export function useStoreData(user: User | null, activeStore: string) {
   const saveToCloud = async (newData: StoreData) => {
     if (!user || !activeStore) return;
     const docRef = doc(db, 'stores', activeStore);
-    // Preserve field password yang sudah ada — jangan di-overwrite oleh StoreData
+
+    // Firestore tidak bisa simpan field undefined — strip semua undefined dari inventory
+    const cleanInventory = newData.inventory.map(item => ({
+      sku: item.sku,
+      name: item.name,
+      hpp: item.hpp,
+      price: item.price,
+      imageUrl: item.imageUrl ?? null,
+    }));
+
+    // Preserve field password
     const current = await getDoc(docRef);
     const existingPassword = current.exists() ? current.data()?.password : undefined;
-    await setDoc(docRef, { ...newData, ...(existingPassword ? { password: existingPassword } : {}) });
+
+    await setDoc(docRef, {
+      ...newData,
+      inventory: cleanInventory,
+      ...(existingPassword ? { password: existingPassword } : {})
+    });
   };
 
   return { storeData, setStoreData, saveToCloud, isStoreLoading };
