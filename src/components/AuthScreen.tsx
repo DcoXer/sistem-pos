@@ -28,6 +28,13 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
     setError('');
 
     try {
+      // Pastikan anonymous auth sudah ada sebelum akses Firestore
+      const { auth } = await import('../firebase');
+      const { signInAnonymously } = await import('firebase/auth');
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
       const docRef = doc(db, 'stores', code);
       const docSnap = await getDoc(docRef);
 
@@ -131,14 +138,14 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         </div>
 
         <h1 className="text-2xl font-bold mb-2">
-          POS <span className="text-blue-600">Cloud</span>
+          MerchantOS <span className="text-blue-600">Cloud</span>
         </h1>
 
         {/* ===== STEP 1: INPUT KODE TOKO ===== */}
         {step === 'input_code' && (
           <>
             <p className="text-gray-500 text-sm mb-8">
-              Masukkan Kode Toko untuk sinkronisasi data.
+              Masukkan Kode Toko untuk sinkronisasi data dengan partner bisnis lu secara real-time.
             </p>
             <form onSubmit={handleCheckStore} className="space-y-4 text-left">
               <div>
@@ -154,7 +161,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
                     required
                     value={storeCodeInput}
                     onChange={e => setStoreCodeInput(e.target.value.toUpperCase())}
-                    placeholder="Kode Toko"
+                    placeholder="Contoh: BAJU-KITA-123"
                     className="pl-10 w-full border-2 border-gray-200 rounded-xl p-3 text-lg font-bold tracking-widest focus:ring-0 focus:border-blue-500 outline-none transition"
                   />
                 </div>
