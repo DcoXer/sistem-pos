@@ -64,29 +64,38 @@ export function useStoreData(user: User | null, activeStore: string) {
     }
     const docRef = doc(db, 'stores', activeStore);
 
-    // Clean undefined dari inventory — Firestore tidak bisa simpan undefined
-    const cleanInventory = newData.inventory.map(item => ({
-      sku: item.sku,
-      name: item.name,
-      hpp: item.hpp,
-      price: item.price,
-      imageUrl: item.imageUrl ?? null,
+    // Firestore tidak bisa simpan field undefined sama sekali
+    // Solusi: JSON.parse(JSON.stringify()) akan strip semua undefined otomatis
+    const stripped = JSON.parse(JSON.stringify({
+      inventory: newData.inventory.map(item => ({
+        sku: item.sku,
+        name: item.name,
+        hpp: item.hpp,
+        price: item.price,
+        imageUrl: item.imageUrl ?? null,
+      })),
+      restocks: newData.restocks,
+      sales: newData.sales.map(s => ({
+        id: s.id,
+        date: s.date,
+        invoice: s.invoice || '',
+        sku: s.sku,
+        qty: s.qty,
+        size: s.size,
+        status: s.status || 'selesai',
+        dpAmount: s.dpAmount ?? null,
+      })),
+      expenses: newData.expenses,
     }));
 
-    const payload: any = {
-      ...newData,
-      inventory: cleanInventory,
-    };
-
-    // Preserve password dari ref — tidak perlu getDoc lagi
     if (passwordRef.current) {
-      payload.password = passwordRef.current;
+      stripped.password = passwordRef.current;
     }
 
     try {
-      await setDoc(docRef, payload);
+      await setDoc(docRef, stripped);
     } catch (err: any) {
-      alert('DEBUG: Gagal simpan - ' + (err?.message || err?.code || 'unknown error'));
+      alert('Gagal simpan data: ' + (err?.message || err?.code || 'unknown error'));
     }
   };
 
