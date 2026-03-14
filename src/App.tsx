@@ -12,6 +12,7 @@ import SalesTab from "./components/SalesTab";
 import ExpensesTab from "./components/ExpensesTab";
 
 import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem } from "./types";
+import { Toast, useToast } from "./components/Toast";
 
 export default function App() {
   const { user, isInitializing } = useAuth();
@@ -29,12 +30,14 @@ export default function App() {
   );
 
   const metrics = useMetrics(storeData);
+  const toast = useToast();
 
   // ==============================
   // EXPORT DATA
   // ==============================
 
   const handleExportData = () => {
+    try {
     const [fy, fm] = filterMonth.split('-').map(Number);
     const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
       'Juli','Agustus','September','Oktober','November','Desember'];
@@ -231,6 +234,10 @@ export default function App() {
     XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN LABA RUGI — ${bulanLabel}`, profitSheet), "Laba Rugi");
 
     XLSX.writeFile(workbook, `laporan-${bulanLabel.replace(' ', '-').toLowerCase()}.xlsx`);
+    toast.success(`Laporan ${bulanLabel} berhasil diexport ke Excel.`);
+    } catch {
+      toast.error('Gagal mengekspor laporan. Coba lagi.');
+    }
   };
 
   const [newExp, setNewExp] = useState({
@@ -276,14 +283,18 @@ export default function App() {
     const updatedInv = [...(storeData.inventory || []), item];
     const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Produk berhasil ditambahkan ke database.'))
+      .catch(() => toast.error('Gagal menyimpan produk. Periksa koneksi internet kamu.'));
   };
 
   const handleDeleteInventory = (sku: string) => {
     const updatedInv = storeData.inventory.filter((i) => i.sku !== sku);
     const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Produk berhasil dihapus.'))
+      .catch(() => toast.error('Gagal menghapus produk. Coba lagi.'));
   };
 
   const handleUpdateInventory = (oldSku: string, item: InventoryItem) => {
@@ -292,7 +303,9 @@ export default function App() {
     );
     const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Data produk berhasil diperbarui.'))
+      .catch(() => toast.error('Gagal memperbarui produk. Periksa koneksi internet kamu.'));
   };
 
   const handleAddRestock = (restock: Omit<RestockItem, "id">) => {
@@ -303,7 +316,9 @@ export default function App() {
     const updatedRestocks = [newRestock, ...(storeData.restocks || [])];
     const newData = { ...storeData, restocks: updatedRestocks };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Restock berhasil dicatat.'))
+      .catch(() => toast.error('Gagal menyimpan restock. Coba lagi.'));
   };
 
   const handleDeleteRestock = (id: string) => {
@@ -332,14 +347,18 @@ export default function App() {
     const updatedSales = [newSale, ...(storeData.sales || [])];
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Penjualan berhasil dicatat.'))
+      .catch(() => toast.error('Gagal menyimpan penjualan. Periksa koneksi internet kamu.'));
   };
 
   const handleDeleteSale = (id: string) => {
     const updatedSales = storeData.sales.filter((s) => s.id !== id);
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Data penjualan berhasil dihapus.'))
+      .catch(() => toast.error('Gagal menghapus penjualan. Coba lagi.'));
   };
 
   const handleUpdateSaleStatus = (id: string, status: SaleStatus, dpAmount?: number) => {
@@ -367,7 +386,9 @@ export default function App() {
     const updatedExpenses = [exp, ...(storeData.expenses || [])];
     const newData = { ...storeData, expenses: updatedExpenses };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Pengeluaran berhasil dicatat.'))
+      .catch(() => toast.error('Gagal menyimpan pengeluaran. Periksa koneksi internet kamu.'));
 
     setNewExp({ ...newExp, desc: "", amount: "" });
   };
@@ -376,7 +397,9 @@ export default function App() {
     const updatedExpenses = storeData.expenses.filter((exp) => exp.id !== id);
     const newData = { ...storeData, expenses: updatedExpenses };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Pengeluaran berhasil dihapus.'))
+      .catch(() => toast.error('Gagal menghapus pengeluaran. Coba lagi.'));
   };
 
   // ==============================
@@ -471,6 +494,7 @@ export default function App() {
           />
         )}
       </main>
+      <Toast toasts={toast.toasts} onRemove={toast.remove} />
     </div>
   );
 }
