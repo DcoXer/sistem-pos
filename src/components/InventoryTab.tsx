@@ -61,7 +61,7 @@ function EditModal({ item, onClose, onSave }: {
 }) {
   const [form, setForm] = useState({ sku: item.sku, name: item.name, hpp: String(item.hpp), price: String(item.price) });
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | undefined>(item.imageUrl);
+  const [imagePreview, setImagePreview] = useState<string | undefined>(item.imageUrl ?? undefined);
   const [uploading, setUploading] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -79,7 +79,7 @@ function EditModal({ item, onClose, onSave }: {
       try { imageUrl = await uploadProductImage(imageFile, form.sku); }
       catch { alert('Gagal upload gambar.'); setUploading(false); return; }
     }
-    onSave(item.sku, { sku: form.sku, name: form.name, hpp: Number(form.hpp), price: Number(form.price), imageUrl });
+    onSave(item.sku, { sku: form.sku, name: form.name, hpp: Number(form.hpp), price: Number(form.price), imageUrl: imageUrl ?? undefined });
     setUploading(false);
   };
 
