@@ -415,7 +415,13 @@ export default function App() {
       */}
       <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden">
         {activeTab === "dashboard" && (
-          <DashboardTab handleExportData={handleExportData} metrics={metrics} />
+          <DashboardTab
+            handleExportData={handleExportData}
+            metrics={metrics}
+            storeData={storeData}
+            filterMonth={filterMonth}
+            onFilterMonthChange={setFilterMonth}
+          />
         )}
 
         {activeTab === "stok" && (
