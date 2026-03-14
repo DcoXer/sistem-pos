@@ -252,6 +252,7 @@ export default function App() {
       qty: Number(sale.qty),
       size: sale.size,
       status: sale.status || 'selesai',
+      dpAmount: sale.status === 'dp' ? sale.dpAmount : undefined,
     };
 
     const updatedSales = [newSale, ...(storeData.sales || [])];
