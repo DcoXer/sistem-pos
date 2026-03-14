@@ -1,7 +1,5 @@
 import React, { useState, useMemo } from "react";
 import { Plus, Trash2, Pencil, X, Check, PackagePlus, History, Upload, Search, ImageOff } from "lucide-react";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebase";
 import type { InventoryItem, RestockItem } from "../types";
 import { SIZES } from "../types";
 import MonthFilter from "./MonthFilter";
@@ -25,10 +23,19 @@ interface InventoryTabProps {
 // IMAGE UPLOAD HELPER
 // ==============================
 async function uploadProductImage(file: File, sku: string): Promise<string> {
-  const ext = file.name.split('.').pop();
-  const storageRef = ref(storage, `products/${sku}-${Date.now()}.${ext}`);
-  await uploadBytes(storageRef, file);
-  return await getDownloadURL(storageRef);
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'POS-System');
+  formData.append('public_id', `products/${sku}-${Date.now()}`);
+
+  const res = await fetch('https://api.cloudinary.com/v1_1/dtfyfx9zr/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error('Upload gagal');
+  const data = await res.json();
+  return data.secure_url;
 }
 
 // ==============================
