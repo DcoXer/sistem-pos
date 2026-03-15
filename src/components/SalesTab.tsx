@@ -367,9 +367,8 @@ export default function SalesTab({
       {/* Search */}
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
+        <input value={search} onChange={e => handleSearchChange(e.target.value)}
           placeholder="Cari SKU, nama produk, atau invoice..."
-          onChange={e => handleSearchChange(e.target.value)}
           className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none" />
       </div>
 
