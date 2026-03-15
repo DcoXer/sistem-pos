@@ -46,17 +46,17 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: nu
         visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       } ${
         isSuccess
-          ? 'bg-green-500 border-green-100'
-          : 'bg-red-500 border-red-100'
+          ? 'bg-green-700 border-green-200'
+          : 'bg-red-700 border-red-200'
       }`}
     >
       <div className={`shrink-0 mt-0.5 ${isSuccess ? 'text-white' : 'text-white'}`}>
         {isSuccess ? <CheckCircle size={18} /> : <XCircle size={18} />}
       </div>
-      <p className="text-sm text-gray-700 flex-1 leading-snug">{toast.message}</p>
+      <p className="text-sm text-white flex-1 leading-snug">{toast.message}</p>
       <button
         onClick={() => { setVisible(false); setTimeout(() => onRemove(toast.id), 300); }}
-        className="shrink-0 text-gray-300 hover:text-gray-500 transition mt-0.5"
+        className="shrink-0 text-white hover:text-gray-300 transition mt-0.5"
       >
         <X size={14} />
       </button>
