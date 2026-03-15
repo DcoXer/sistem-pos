@@ -3,6 +3,7 @@ import { Plus, Trash2, X, Check, Search, ImageOff } from 'lucide-react';
 import type { StoreData, SaleItem, SaleStatus } from '../types';
 import { SIZES } from '../types';
 import MonthFilter from './MonthFilter';
+import Pagination from './Pagination';
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
@@ -166,6 +167,8 @@ export default function SalesTab({
   });
   const [editingSale, setEditingSale] = useState<SaleItem | null>(null);
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const getAvailableStock = () => {
     if (!newSale.sku || !newSale.size) return null;
@@ -197,6 +200,8 @@ export default function SalesTab({
     setNewSale({ ...newSale, invoice: '', sku: '', size: '', qty: '', status: 'selesai', dpAmount: '' });
   };
 
+  const handleSearchChange = (q: string) => { setSearch(q); setPage(1); };
+
   // Filter bulan
   const filteredSales = useMemo(() => {
     const [fy, fm] = filterMonth.split('-').map(Number);
@@ -210,6 +215,9 @@ export default function SalesTab({
       return s.sku.toLowerCase().includes(q) || (item?.name || '').toLowerCase().includes(q) || (s.invoice || '').toLowerCase().includes(q);
     });
   }, [storeData.sales, filterMonth, search, metrics.stockMap]);
+
+  const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
+  const paginatedSales = filteredSales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totalLunas = filteredSales.filter(s => (s.status || 'selesai') === 'selesai')
     .reduce((sum, s) => { const i = metrics.stockMap[s.sku]; return sum + (i ? i.price * s.qty : 0); }, 0);
@@ -361,6 +369,7 @@ export default function SalesTab({
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Cari SKU, nama produk, atau invoice..."
+          onChange={e => handleSearchChange(e.target.value)}
           className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none" />
       </div>
 
@@ -371,7 +380,7 @@ export default function SalesTab({
           </div>
         : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredSales.map(sale => {
+            {paginatedSales.map(sale => {
               const item = metrics.stockMap[sale.sku];
               return (
                 <SaleCard
@@ -383,6 +392,10 @@ export default function SalesTab({
                 />
               );
             })}
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-gray-400">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         )
       }
