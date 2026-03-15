@@ -414,6 +414,9 @@ export default function InventoryTab({
     );
   }, [metrics.stockMap, search]);
 
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+  const paginatedItems = filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
