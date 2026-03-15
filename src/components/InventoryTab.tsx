@@ -3,6 +3,7 @@ import { Plus, Trash2, Pencil, X, Check, PackagePlus, History, Upload, Search, I
 import type { InventoryItem, RestockItem } from "../types";
 import { SIZES } from "../types";
 import MonthFilter from "./MonthFilter";
+import Pagination from "./Pagination";
 
 const formatRp = (num: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(num);
@@ -366,6 +367,8 @@ export default function InventoryTab({
   const [restockingItem, setRestockingItem] = useState<InventoryItem | null>(null);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -400,6 +403,9 @@ export default function InventoryTab({
     setShowForm(false);
   };
 
+  // Reset ke halaman 1 saat search berubah
+  const handleSearchChange = (q: string) => { setSearch(q); setPage(1); };
+
   // Filter + search
   const filteredItems = useMemo(() => {
     const q = search.toLowerCase();
@@ -422,7 +428,7 @@ export default function InventoryTab({
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={e => handleSearchChange(e.target.value)}
             placeholder="Cari SKU atau nama produk..."
             className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           />
@@ -499,7 +505,7 @@ export default function InventoryTab({
         )
         : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredItems.map((item: any) => (
+            {paginatedItems.map((item: any) => (
               <ProductCard
                 key={item.sku}
                 item={item}
@@ -508,6 +514,10 @@ export default function InventoryTab({
                 onRestock={() => setRestockingItem(item)}
               />
             ))}
+          </div>
+          <div className="flex items-center justify-between pt-2">
+            <p className="text-xs text-gray-400">{filteredItems.length} produk · halaman {page} dari {totalPages}</p>
+            <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         )
       }
