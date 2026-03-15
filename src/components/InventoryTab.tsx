@@ -504,6 +504,7 @@ export default function InventoryTab({
           </div>
         )
         : (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {paginatedItems.map((item: any) => (
               <ProductCard
@@ -519,6 +520,7 @@ export default function InventoryTab({
             <p className="text-xs text-gray-400">{filteredItems.length} produk · halaman {page} dari {totalPages}</p>
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
+          </>
         )
       }
 
