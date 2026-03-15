@@ -379,6 +379,7 @@ export default function SalesTab({
             {search ? `Tidak ada transaksi dengan kata kunci "${search}"` : 'Tidak ada penjualan di bulan ini.'}
           </div>
         : (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {paginatedSales.map(sale => {
               const item = metrics.stockMap[sale.sku];
@@ -397,6 +398,7 @@ export default function SalesTab({
             <p className="text-xs text-gray-400">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
+          </>
         )
       }
 
