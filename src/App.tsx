@@ -10,6 +10,7 @@ import DashboardTab from "./components/Dashboard";
 import InventoryTab from "./components/InventoryTab";
 import SalesTab from "./components/SalesTab";
 import ExpensesTab from "./components/ExpensesTab";
+import ClosingTab from "./components/ClosingTab";
 
 import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem } from "./types";
 import { Toast, useToast } from "./components/Toast";
@@ -124,7 +125,7 @@ export default function App() {
             'Total Masuk': 0,
             Terjual: 0,
             'Sisa Stok': 0,
-            'Total HPP': rp(0),
+            'Nilai Sisa (HPP)': rp(0),
           }];
         }
 
@@ -141,7 +142,7 @@ export default function App() {
             'Total Masuk': restocked,
             Terjual: sold,
             'Sisa Stok': sisa,
-            'Total HPP': rp(sisa * i.hpp),
+            'Nilai Sisa (HPP)': rp(sisa * i.hpp),
           };
         });
       }),
@@ -161,8 +162,8 @@ export default function App() {
                 'Nama Produk': invItem?.name || '-',
                 Ukuran: s.size,
                 'Qty Masuk': s.stock,
-                'HPP (Masuk)': rp(invItem?.hpp || 0),
-                'Total HPP': rp(s.stock * (invItem?.hpp || 0)),
+                'HPP (Modal)': rp(invItem?.hpp || 0),
+                'Nilai Masuk': rp(s.stock * (invItem?.hpp || 0)),
                 Keterangan: r.note || '-',
               }));
           }),
@@ -173,8 +174,8 @@ export default function App() {
             'Nama Produk': '',
             Ukuran: '',
             'Qty Masuk': restocksThisMonth.flatMap(r => r.sizes).reduce((sum, s) => sum + s.stock, 0),
-            'HPP (Masuk)': '',
-            'Total HPP': rp(restocksThisMonth.flatMap(r => {
+            'HPP (Modal)': '',
+            'Nilai Masuk': rp(restocksThisMonth.flatMap(r => {
               const inv = storeData.inventory.find(i => i.sku === r.sku);
               return r.sizes.map(s => s.stock * (inv?.hpp || 0));
             }).reduce((a, b) => a + b, 0)),
@@ -434,7 +435,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-300">
+    <div className="min-h-screen flex bg-gray-100">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -492,6 +493,13 @@ export default function App() {
             onFilterMonthChange={setFilterMonth}
             onAddExpense={handleAddExpense}
             onDeleteExpense={handleDeleteExpense}
+          />
+        )}
+
+        {activeTab === "closing" && (
+          <ClosingTab
+            storeData={storeData}
+            metrics={metrics}
           />
         )}
       </main>
