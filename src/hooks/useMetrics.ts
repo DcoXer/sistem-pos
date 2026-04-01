@@ -10,15 +10,16 @@ export function useMetrics(storeData: StoreData) {
     const inv = storeData.inventory || [];
     const restocks = storeData.restocks || [];
     const sls = storeData.sales || [];
+    const fnbSales = storeData.fnbSales || [];
     const exp = storeData.expenses || [];
+    const isFnb = storeData.storeType === 'fnb';
 
     // Build stockMap dari master inventory
     const stockMap = inv.reduce((acc, item) => {
       acc[item.sku] = {
         ...item,
-        // Akumulasi stok dari semua restock entries
-        totalRestocked: 0,           // total pcs masuk semua restock
-        restockedBySize: {} as Record<string, number>, // total masuk per ukuran
+        totalRestocked: 0,
+        restockedBySize: {} as Record<string, number>,
         sold: 0,
         soldBySize: {} as Record<string, number>,
         current: 0,
@@ -28,44 +29,59 @@ export function useMetrics(storeData: StoreData) {
       return acc;
     }, {} as { [key: string]: any });
 
-    // Akumulasi stok dari restock entries
-    restocks.forEach(restock => {
-      const item = stockMap[restock.sku];
-      if (!item) return;
-
-      item.restockHistory.push(restock);
-
-      restock.sizes.forEach(s => {
-        item.totalRestocked += s.stock;
-        item.restockedBySize[s.size] = (item.restockedBySize[s.size] || 0) + s.stock;
+    if (!isFnb) {
+      // ===== FASHION: kalkulasi dari restocks & sales =====
+      restocks.forEach(restock => {
+        const item = stockMap[restock.sku];
+        if (!item) return;
+        item.restockHistory.push(restock);
+        restock.sizes.forEach(s => {
+          item.totalRestocked += s.stock;
+          item.restockedBySize[s.size] = (item.restockedBySize[s.size] || 0) + s.stock;
+        });
       });
-    });
 
-    // Kalkulasi penjualan
-    sls.forEach(sale => {
-      const item = stockMap[sale.sku];
-      if (!item) return;
-
-      totalRevenue += item.price * sale.qty;
-      totalHppSold += item.hpp * sale.qty;
-      item.sold += sale.qty;
-
-      if (sale.size) {
-        item.soldBySize[sale.size] = (item.soldBySize[sale.size] || 0) + sale.qty;
-      }
-    });
-
-    // Hitung stok sisa per item dan per ukuran
-    Object.values(stockMap).forEach((item: any) => {
-      item.current = item.totalRestocked - item.sold;
-
-      Object.keys(item.restockedBySize).forEach(size => {
-        item.currentBySize[size] =
-          (item.restockedBySize[size] || 0) - (item.soldBySize[size] || 0);
+      sls.forEach(sale => {
+        const item = stockMap[sale.sku];
+        if (!item) return;
+        totalRevenue += item.price * sale.qty;
+        totalHppSold += item.hpp * sale.qty;
+        item.sold += sale.qty;
+        if (sale.size) {
+          item.soldBySize[sale.size] = (item.soldBySize[sale.size] || 0) + sale.qty;
+        }
       });
-    });
 
-    // Pengeluaran
+      Object.values(stockMap).forEach((item: any) => {
+        item.current = item.totalRestocked - item.sold;
+        Object.keys(item.restockedBySize).forEach(size => {
+          item.currentBySize[size] =
+            (item.restockedBySize[size] || 0) - (item.soldBySize[size] || 0);
+        });
+      });
+
+    } else {
+      // ===== FNB: kalkulasi dari fnbSales =====
+      fnbSales.forEach(sale => {
+        // total sudah tersimpan di sale.total saat transaksi dibuat
+        totalRevenue += sale.total;
+
+        // Hitung HPP dari items
+        sale.items.forEach(si => {
+          const item = stockMap[si.sku];
+          if (!item) return;
+          totalHppSold += item.hpp * si.qty;
+          item.sold += si.qty;
+        });
+      });
+
+      // FnB tidak pakai stok fisik — current = 0 (tidak relevan)
+      Object.values(stockMap).forEach((item: any) => {
+        item.current = 0;
+      });
+    }
+
+    // Pengeluaran — sama untuk semua tipe toko
     exp.forEach(e => {
       totalExpenses += Number(e.amount);
     });
@@ -75,10 +91,12 @@ export function useMetrics(storeData: StoreData) {
 
     let totalStockPcs = 0;
     let deadStockValue = 0;
-    Object.values(stockMap).forEach((item: any) => {
-      totalStockPcs += item.current;
-      deadStockValue += item.current * item.hpp;
-    });
+    if (!isFnb) {
+      Object.values(stockMap).forEach((item: any) => {
+        totalStockPcs += item.current;
+        deadStockValue += item.current * item.hpp;
+      });
+    }
 
     return {
       totalRevenue,
