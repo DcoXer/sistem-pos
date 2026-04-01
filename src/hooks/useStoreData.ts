@@ -5,9 +5,11 @@ import type { StoreData } from '../types';
 import type { User } from 'firebase/auth';
 
 const emptyData: StoreData = {
+  storeType: 'fashion',
   inventory: [],
   restocks: [],
   sales: [],
+  fnbSales: [],
   expenses: []
 };
 
@@ -38,9 +40,11 @@ export function useStoreData(user: User | null, activeStore: string) {
         }
 
         setStoreData({
+          storeType: data.storeType || 'fashion',
           inventory: data.inventory || [],
           restocks: data.restocks || [],
           sales: data.sales || [],
+          fnbSales: data.fnbSales || [],
           expenses: data.expenses || []
         });
       } else {
@@ -64,6 +68,7 @@ export function useStoreData(user: User | null, activeStore: string) {
     // Firestore tidak bisa simpan field undefined sama sekali
     // Solusi: JSON.parse(JSON.stringify()) akan strip semua undefined otomatis
     const stripped = JSON.parse(JSON.stringify({
+      storeType: newData.storeType || 'fashion',
       inventory: newData.inventory.map(item => ({
         sku: item.sku,
         name: item.name,
@@ -81,6 +86,12 @@ export function useStoreData(user: User | null, activeStore: string) {
         size: s.size,
         status: s.status || 'selesai',
         dpAmount: s.dpAmount ?? null,
+      })),
+      fnbSales: (newData.fnbSales || []).map(s => ({
+        id: s.id,
+        date: s.date,
+        items: s.items,
+        total: s.total,
       })),
       expenses: newData.expenses,
     }));
