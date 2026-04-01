@@ -42,9 +42,13 @@ export default function ClosingTab({ storeData, metrics }: ClosingTabProps) {
   // ==============================
   // DATA HARI INI
   // ==============================
+  const isFnb = storeData.storeType === 'fnb';
+
   const salesToday = useMemo(() =>
-    (storeData.sales || []).filter(s => s.date === selectedDate),
-    [storeData.sales, selectedDate]
+    isFnb
+      ? (storeData.fnbSales || []).filter(s => s.date === selectedDate)
+      : (storeData.sales || []).filter(s => s.date === selectedDate),
+    [storeData.sales, storeData.fnbSales, selectedDate, isFnb]
   );
 
   const expensesToday = useMemo(() =>
@@ -52,70 +56,88 @@ export default function ClosingTab({ storeData, metrics }: ClosingTabProps) {
     [storeData.expenses, selectedDate]
   );
 
-  // Omzet hari ini (hanya status selesai)
-  const omzetToday = salesToday
-    .filter(s => (s.status || 'selesai') === 'selesai')
-    .reduce((sum, s) => {
-      const item = metrics.stockMap[s.sku];
-      return sum + (item ? item.price * s.qty : 0);
-    }, 0);
+  // Omzet hari ini
+  const omzetToday = isFnb
+    ? (salesToday as any[]).reduce((sum: number, s: any) => sum + (s.total || 0), 0)
+    : (salesToday as any[]).filter((s: any) => (s.status || 'selesai') === 'selesai')
+        .reduce((sum: number, s: any) => {
+          const item = metrics.stockMap[s.sku];
+          return sum + (item ? item.price * s.qty : 0);
+        }, 0);
 
-  // Total semua order hari ini (termasuk pending & DP)
-  const totalOrderToday = salesToday.reduce((sum, s) => {
-    const item = metrics.stockMap[s.sku];
-    return sum + (item ? item.price * s.qty : 0);
-  }, 0);
+  // Total semua order hari ini
+  const totalOrderToday = isFnb
+    ? omzetToday
+    : (salesToday as any[]).reduce((sum: number, s: any) => {
+        const item = metrics.stockMap[s.sku];
+        return sum + (item ? item.price * s.qty : 0);
+      }, 0);
 
-  // DP masuk hari ini
-  const dpToday = salesToday
-    .filter(s => s.status === 'dp')
-    .reduce((sum, s) => sum + (s.dpAmount || 0), 0);
+  // DP masuk hari ini (fashion only)
+  const dpToday = isFnb ? 0 : (salesToday as any[])
+    .filter((s: any) => s.status === 'dp')
+    .reduce((sum: number, s: any) => sum + (s.dpAmount || 0), 0);
 
   // HPP hari ini
-  const hppToday = salesToday
-    .filter(s => (s.status || 'selesai') === 'selesai')
-    .reduce((sum, s) => {
-      const item = metrics.stockMap[s.sku];
-      return sum + (item ? item.hpp * s.qty : 0);
-    }, 0);
+  const hppToday = isFnb
+    ? (salesToday as any[]).reduce((sum: number, s: any) =>
+        sum + (s.items || []).reduce((acc: number, si: any) => {
+          const item = metrics.stockMap[si.sku];
+          return acc + (item ? item.hpp * si.qty : 0);
+        }, 0), 0)
+    : (salesToday as any[]).filter((s: any) => (s.status || 'selesai') === 'selesai')
+        .reduce((sum: number, s: any) => {
+          const item = metrics.stockMap[s.sku];
+          return sum + (item ? item.hpp * s.qty : 0);
+        }, 0);
 
   // Total pengeluaran hari ini
   const expenseToday = expensesToday.reduce((sum, e) => sum + e.amount, 0);
 
-  // Laba bersih hari ini
   const grossToday = omzetToday - hppToday;
   const netToday = grossToday - expenseToday;
 
   // Total qty terjual
-  const qtyToday = salesToday
-    .filter(s => (s.status || 'selesai') === 'selesai')
-    .reduce((sum, s) => sum + s.qty, 0);
+  const qtyToday = isFnb
+    ? (salesToday as any[]).reduce((sum: number, s: any) =>
+        sum + (s.items || []).reduce((acc: number, si: any) => acc + si.qty, 0), 0)
+    : (salesToday as any[]).filter((s: any) => (s.status || 'selesai') === 'selesai')
+        .reduce((sum: number, s: any) => sum + s.qty, 0);
 
   // Rincian per produk
   const productSummary = useMemo(() => {
     const map: Record<string, { name: string; imageUrl?: string | null; qty: number; omzet: number; sizes: Record<string, number> }> = {};
-    salesToday
-      .filter(s => (s.status || 'selesai') === 'selesai')
-      .forEach(s => {
-        const item = metrics.stockMap[s.sku];
-        if (!map[s.sku]) {
-          map[s.sku] = {
-            name: item?.name || s.sku,
-            imageUrl: item?.imageUrl,
-            qty: 0,
-            omzet: 0,
-            sizes: {},
-          };
-        }
-        map[s.sku].qty += s.qty;
-        map[s.sku].omzet += item ? item.price * s.qty : 0;
-        map[s.sku].sizes[s.size] = (map[s.sku].sizes[s.size] || 0) + s.qty;
-      });
-    return Object.entries(map).sort((a, b) => b[1].qty - a[1].qty);
-  }, [salesToday, metrics.stockMap]);
 
-  // Piutang hari ini (pending + DP)
-  const piutangToday = salesToday.filter(s => (s.status || 'selesai') !== 'selesai');
+    if (isFnb) {
+      (salesToday as any[]).forEach((s: any) => {
+        (s.items || []).forEach((si: any) => {
+          const item = metrics.stockMap[si.sku];
+          if (!map[si.sku]) {
+            map[si.sku] = { name: item?.name || si.sku, imageUrl: item?.imageUrl, qty: 0, omzet: 0, sizes: {} };
+          }
+          map[si.sku].qty += si.qty;
+          map[si.sku].omzet += item ? item.price * si.qty : 0;
+        });
+      });
+    } else {
+      (salesToday as any[])
+        .filter((s: any) => (s.status || 'selesai') === 'selesai')
+        .forEach((s: any) => {
+          const item = metrics.stockMap[s.sku];
+          if (!map[s.sku]) {
+            map[s.sku] = { name: item?.name || s.sku, imageUrl: item?.imageUrl, qty: 0, omzet: 0, sizes: {} };
+          }
+          map[s.sku].qty += s.qty;
+          map[s.sku].omzet += item ? item.price * s.qty : 0;
+          map[s.sku].sizes[s.size] = (map[s.sku].sizes[s.size] || 0) + s.qty;
+        });
+    }
+
+    return Object.entries(map).sort((a, b) => b[1].qty - a[1].qty);
+  }, [salesToday, metrics.stockMap, isFnb]);
+
+  // Piutang hari ini (fashion only)
+  const piutangToday = isFnb ? [] : (salesToday as any[]).filter((s: any) => (s.status || 'selesai') !== 'selesai');
 
   return (
     <div className="space-y-6 animate-fade-in">
