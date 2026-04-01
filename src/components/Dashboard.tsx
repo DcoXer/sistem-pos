@@ -23,6 +23,7 @@ export default function DashboardTab({
   const [fy, fm] = filterMonth.split('-').map(Number);
   const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
     'Juli','Agustus','September','Oktober','November','Desember'];
+  const isFnb = storeData.storeType === 'fnb';
 
   const inMonth = (dateStr: string, y: number, m: number) => {
     const d = new Date(dateStr);
@@ -32,18 +33,30 @@ export default function DashboardTab({
   // ==============================
   // METRIC BULAN INI
   // ==============================
-  const salesThisMonth = (storeData.sales || []).filter(s => inMonth(s.date, fy, fm));
+  const salesThisMonth = isFnb
+    ? (storeData.fnbSales || []).filter(s => inMonth(s.date, fy, fm))
+    : (storeData.sales || []).filter(s => inMonth(s.date, fy, fm));
+
   const expensesThisMonth = (storeData.expenses || []).filter(e => inMonth(e.date, fy, fm));
 
-  const revenueThisMonth = salesThisMonth.reduce((sum, s) => {
-    const item = metrics.stockMap[s.sku];
-    return sum + (item ? item.price * s.qty : 0);
-  }, 0);
+  const revenueThisMonth = isFnb
+    ? (salesThisMonth as any[]).reduce((sum: number, s: any) => sum + (s.total || 0), 0)
+    : (salesThisMonth as any[]).reduce((sum: number, s: any) => {
+        const item = metrics.stockMap[s.sku];
+        return sum + (item ? item.price * s.qty : 0);
+      }, 0);
 
-  const hppThisMonth = salesThisMonth.reduce((sum, s) => {
-    const item = metrics.stockMap[s.sku];
-    return sum + (item ? item.hpp * s.qty : 0);
-  }, 0);
+  const hppThisMonth = isFnb
+    ? (salesThisMonth as any[]).reduce((sum: number, s: any) => {
+        return sum + (s.items || []).reduce((acc: number, si: any) => {
+          const item = metrics.stockMap[si.sku];
+          return acc + (item ? item.hpp * si.qty : 0);
+        }, 0);
+      }, 0)
+    : (salesThisMonth as any[]).reduce((sum: number, s: any) => {
+        const item = metrics.stockMap[s.sku];
+        return sum + (item ? item.hpp * s.qty : 0);
+      }, 0);
 
   const expenseThisMonth = expensesThisMonth.reduce((sum, e) => sum + e.amount, 0);
   const grossProfitThisMonth = revenueThisMonth - hppThisMonth;
@@ -52,11 +65,11 @@ export default function DashboardTab({
   // ==============================
   // PIUTANG (pending + dp)
   // ==============================
-  const allUnpaid = (storeData.sales || []).filter(s =>
+  const allUnpaid = isFnb ? [] : (storeData.sales || []).filter(s =>
     (s.status || 'selesai') === 'pending' || (s.status || 'selesai') === 'dp'
   );
 
-  const totalPiutang = allUnpaid.reduce((sum, s) => {
+  const totalPiutang = isFnb ? 0 : allUnpaid.reduce((sum: number, s: any) => {
     const item = metrics.stockMap[s.sku];
     const total = item ? item.price * s.qty : 0;
     const dp = s.status === 'dp' ? (s.dpAmount || 0) : 0;
@@ -72,12 +85,16 @@ export default function DashboardTab({
   });
 
   const chartData = last6Months.map(({ y, m, label }) => {
-    const rev = (storeData.sales || [])
-      .filter(s => inMonth(s.date, y, m))
-      .reduce((sum, s) => {
-        const item = metrics.stockMap[s.sku];
-        return sum + (item ? item.price * s.qty : 0);
-      }, 0);
+    const rev = isFnb
+      ? (storeData.fnbSales || [])
+          .filter(s => inMonth(s.date, y, m))
+          .reduce((sum, s) => sum + (s.total || 0), 0)
+      : (storeData.sales || [])
+          .filter(s => inMonth(s.date, y, m))
+          .reduce((sum, s) => {
+            const item = metrics.stockMap[s.sku];
+            return sum + (item ? item.price * s.qty : 0);
+          }, 0);
     const exp = (storeData.expenses || [])
       .filter(e => inMonth(e.date, y, m))
       .reduce((sum, e) => sum + e.amount, 0);
@@ -90,9 +107,17 @@ export default function DashboardTab({
   // PRODUK TERLARIS BULAN INI
   // ==============================
   const skuQtyMap: Record<string, number> = {};
-  salesThisMonth.forEach(s => {
-    skuQtyMap[s.sku] = (skuQtyMap[s.sku] || 0) + s.qty;
-  });
+  if (isFnb) {
+    (salesThisMonth as any[]).forEach((s: any) => {
+      (s.items || []).forEach((si: any) => {
+        skuQtyMap[si.sku] = (skuQtyMap[si.sku] || 0) + si.qty;
+      });
+    });
+  } else {
+    (salesThisMonth as any[]).forEach((s: any) => {
+      skuQtyMap[s.sku] = (skuQtyMap[s.sku] || 0) + s.qty;
+    });
+  }
   const topProducts = Object.entries(skuQtyMap)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
