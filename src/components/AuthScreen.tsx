@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { Users, Key, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import type { StoreType } from '../types';
 import { db } from '../firebase';
 
 interface AuthScreenProps {
   setActiveStore: (code: string) => void;
 }
 
-type Step = 'input_code' | 'set_password' | 'input_password';
+type Step = 'input_code' | 'set_type' | 'set_password' | 'input_password';
 
 export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
   const [storeCodeInput, setStoreCodeInput] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [storeType, setStoreType] = useState<StoreType>('fashion');
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<Step>('input_code');
   const [isLoading, setIsLoading] = useState(false);
@@ -49,8 +51,8 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
           localStorage.setItem('merchantOsStoreCode', code);
         }
       } else {
-        // Toko baru — minta set password
-        setStep('set_password');
+        // Toko baru — pilih tipe toko dulu
+        setStep('set_type');
       }
     } catch (err) {
       setError('Gagal cek toko. Periksa koneksi internet lo.');
@@ -79,9 +81,11 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
       const docRef = doc(db, 'stores', code);
       // Buat toko baru dengan password
       await setDoc(docRef, {
+        storeType,
         inventory: [],
         restocks: [],
         sales: [],
+        fnbSales: [],
         expenses: [],
         password,
       });
@@ -179,14 +183,60 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
           </>
         )}
 
-        {/* ===== STEP 2A: SET PASSWORD BARU ===== */}
-        {step === 'set_password' && (
+        {/* ===== STEP 1B: PILIH TIPE TOKO ===== */}
+        {step === 'set_type' && (
           <>
             <p className="text-gray-500 text-sm mb-2">
               Toko <span className="font-bold text-gray-700">{storeCodeInput}</span> belum ada.
             </p>
+            <p className="text-gray-500 text-sm mb-6">Pilih tipe toko kamu dulu.</p>
+            <div className="space-y-3 text-left">
+              <button
+                onClick={() => setStoreType('fashion')}
+                className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 transition ${
+                  storeType === 'fashion' ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <span className="text-2xl">👕</span>
+                <div>
+                  <p className="font-bold text-gray-700">Toko Baju</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Stok per ukuran (S/M/L/XL), restock, status order, DP</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setStoreType('fnb')}
+                className={`w-full flex items-start gap-4 p-4 rounded-xl border-2 transition ${
+                  storeType === 'fnb' ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <span className="text-2xl">🍔</span>
+                <div>
+                  <p className="font-bold text-gray-700">Toko Jajanan</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Kasir sederhana, input produk & penjualan, tanpa ukuran</p>
+                </div>
+              </button>
+            </div>
+            <button
+              onClick={() => setStep('set_password')}
+              className="w-full mt-4 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-xl transition shadow-lg shadow-blue-200"
+            >
+              Lanjut →
+            </button>
+            <button type="button" onClick={resetToStep1}
+              className="w-full text-sm text-gray-400 hover:text-gray-600 transition mt-2">
+              ← Ganti kode toko
+            </button>
+          </>
+        )}
+
+        {/* ===== STEP 2A: SET PASSWORD BARU ===== */}
+        {step === 'set_password' && (
+          <>
+            <p className="text-gray-500 text-sm mb-2">
+              Toko <span className="font-bold text-gray-700">{storeCodeInput}</span> · {storeType === 'fashion' ? '👕 Toko Baju' : '🍔 Toko Jajanan'}
+            </p>
             <p className="text-gray-500 text-sm mb-8">
-              Buat password untuk mengamankan toko baru lo.
+              Buat password untuk mengamankan toko baru kamu.
             </p>
             <form onSubmit={handleSetPassword} className="space-y-4 text-left">
               <div>
