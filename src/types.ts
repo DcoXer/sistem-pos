@@ -45,9 +45,20 @@ export interface ExpenseItem {
   amount: number;
 }
 
+export type StoreType = 'fashion' | 'fnb';
+
+export interface FnbSaleItem {
+  id: string;
+  date: string;
+  items: { sku: string; qty: number }[];
+  total: number;
+}
+
 export interface StoreData {
+  storeType?: StoreType;
   inventory: InventoryItem[];
   restocks: RestockItem[];
   sales: SaleItem[];
+  fnbSales?: FnbSaleItem[];
   expenses: ExpenseItem[];
 }
