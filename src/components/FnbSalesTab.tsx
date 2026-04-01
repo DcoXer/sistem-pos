@@ -47,8 +47,14 @@ export default function FnbSalesTab({
 
   const removeFromCart = (sku: string) => setCart(prev => prev.filter(c => c.sku !== sku));
 
+  // Lookup harga dari inventory langsung (stockMap FnB tidak track harga per item)
+  const invMap = useMemo(() =>
+    Object.fromEntries(inventory.map(i => [i.sku, i])),
+    [inventory]
+  );
+
   const cartTotal = cart.reduce((sum, c) => {
-    const item = metrics.stockMap[c.sku];
+    const item = invMap[c.sku];
     return sum + (item ? item.price * c.qty : 0);
   }, 0);
 
@@ -145,7 +151,7 @@ export default function FnbSalesTab({
             {cart.length === 0
               ? <p className="text-sm text-gray-400 text-center py-8">Ketuk produk untuk menambahkan</p>
               : cart.map(c => {
-                  const item = metrics.stockMap[c.sku];
+                  const item = invMap[c.sku];
                   return (
                     <div key={c.sku} className="flex items-center gap-2">
                       {item?.imageUrl
