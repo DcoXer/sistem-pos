@@ -1,13 +1,15 @@
 import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut, CalendarCheck } from 'lucide-react';
+import type { StoreType } from '../types';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   activeStore: string;
+  storeType?: StoreType;
   handleLogoutStore: () => void;
 }
 
-const navItems = [
+const fashionNavItems = [
   { id: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard'  },
   { id: 'stok',        icon: Package,         label: 'Stok'        },
   { id: 'penjualan',   icon: ShoppingCart,    label: 'Penjualan'   },
@@ -15,7 +17,16 @@ const navItems = [
   { id: 'closing',     icon: CalendarCheck,   label: 'Closing'     },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLogoutStore }: SidebarProps) {
+const fnbNavItems = [
+  { id: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard'  },
+  { id: 'stok',        icon: Package,         label: 'Produk'      },
+  { id: 'penjualan',   icon: ShoppingCart,    label: 'Kasir'       },
+  { id: 'pengeluaran', icon: Receipt,         label: 'Pengeluaran' },
+  { id: 'closing',     icon: CalendarCheck,   label: 'Closing'     },
+];
+
+export default function Sidebar({ activeTab, setActiveTab, activeStore, storeType, handleLogoutStore }: SidebarProps) {
+  const navItems = storeType === 'fnb' ? fnbNavItems : fashionNavItems;
   return (
     <>
       {/* DESKTOP SIDEBAR */}
