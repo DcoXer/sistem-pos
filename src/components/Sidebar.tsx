@@ -1,4 +1,4 @@
-import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut, CalendarCheck } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,18 +8,17 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { id: 'stok', icon: Package, label: 'Stok' },
-  { id: 'penjualan', icon: ShoppingCart, label: 'Penjualan' },
-  { id: 'pengeluaran', icon: Receipt, label: 'Pengeluaran' }
+  { id: 'dashboard',   icon: LayoutDashboard, label: 'Dashboard'  },
+  { id: 'stok',        icon: Package,         label: 'Stok'        },
+  { id: 'penjualan',   icon: ShoppingCart,    label: 'Penjualan'   },
+  { id: 'pengeluaran', icon: Receipt,         label: 'Pengeluaran' },
+  { id: 'closing',     icon: CalendarCheck,   label: 'Closing'     },
 ];
 
 export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLogoutStore }: SidebarProps) {
   return (
     <>
-      {/* ===================== */}
-      {/* DESKTOP SIDEBAR       */}
-      {/* ===================== */}
+      {/* DESKTOP SIDEBAR */}
       <nav className="hidden md:flex bg-gray-900 text-white w-64 shrink-0 min-h-screen flex-col">
         <div className="p-6">
           <h1 className="text-xl font-bold tracking-wider text-blue-400">
@@ -60,9 +59,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLo
         </div>
       </nav>
 
-      {/* ===================== */}
-      {/* MOBILE TOP BAR        */}
-      {/* ===================== */}
+      {/* MOBILE TOP BAR */}
       <header className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gray-900 text-white flex items-center justify-between px-4 py-3 border-b border-gray-800">
         <h1 className="text-base font-bold tracking-wider text-blue-400">
           POS<span className="text-white">{activeStore}</span>
@@ -81,9 +78,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLo
         </div>
       </header>
 
-      {/* ===================== */}
-      {/* MOBILE BOTTOM NAV     */}
-      {/* ===================== */}
+      {/* MOBILE BOTTOM NAV */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-900 border-t border-gray-800 flex">
         {navItems.map(item => (
           <button
@@ -95,8 +90,8 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, handleLo
                 : 'text-gray-500 hover:text-gray-300'
             }`}
           >
-            <item.icon size={20} />
-            <span className="text-[10px] font-medium">{item.label}</span>
+            <item.icon size={18} />
+            <span className="text-[9px] font-medium">{item.label}</span>
           </button>
         ))}
       </nav>
