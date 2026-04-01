@@ -48,7 +48,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         } else {
           // Toko ada tapi belum punya password (data lama) — langsung masuk
           setActiveStore(code);
-          localStorage.setItem('merchantOsStoreCode', code);
+          localStorage.setItem('systemPosStoreCode', code);
         }
       } else {
         // Toko baru — pilih tipe toko dulu
@@ -90,7 +90,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         password,
       });
       setActiveStore(code);
-      localStorage.setItem('merchantOsStoreCode', code);
+      localStorage.setItem('systemPosStoreCode', code);
     } catch (err) {
       setError('Gagal membuat toko. Coba lagi.');
     } finally {
@@ -113,7 +113,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         const data = docSnap.data();
         if (data?.password === password) {
           setActiveStore(code);
-          localStorage.setItem('merchantOsStoreCode', code);
+          localStorage.setItem('systemPosStoreCode', code);
         } else {
           setError('Password salah. Coba lagi.');
         }
@@ -142,7 +142,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         </div>
 
         <h1 className="text-2xl font-bold mb-2">
-          MerchantOS <span className="text-blue-600">Cloud</span>
+          SystemPOS <span className="text-blue-600">Cloud</span>
         </h1>
 
         {/* ===== STEP 1: INPUT KODE TOKO ===== */}
