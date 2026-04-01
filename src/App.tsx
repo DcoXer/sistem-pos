@@ -11,8 +11,10 @@ import InventoryTab from "./components/InventoryTab";
 import SalesTab from "./components/SalesTab";
 import ExpensesTab from "./components/ExpensesTab";
 import ClosingTab from "./components/ClosingTab";
+import FnbInventoryTab from "./components/FnbInventoryTab";
+import FnbSalesTab from "./components/FnbSalesTab";
 
-import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem } from "./types";
+import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem, FnbSaleItem } from "./types";
 import { Toast, useToast } from "./components/Toast";
 
 export default function App() {
@@ -362,6 +364,25 @@ export default function App() {
       .catch(() => toast.error('Gagal menghapus penjualan. Coba lagi.'));
   };
 
+  const handleAddFnbSale = (sale: Omit<FnbSaleItem, "id">) => {
+    const newSale: FnbSaleItem = { id: Date.now().toString(), ...sale };
+    const updatedFnbSales = [newSale, ...(storeData.fnbSales || [])];
+    const newData = { ...storeData, fnbSales: updatedFnbSales };
+    setStoreData(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Penjualan berhasil dicatat.'))
+      .catch(() => toast.error('Gagal menyimpan penjualan. Periksa koneksi internet kamu.'));
+  };
+
+  const handleDeleteFnbSale = (id: string) => {
+    const updatedFnbSales = (storeData.fnbSales || []).filter((s) => s.id !== id);
+    const newData = { ...storeData, fnbSales: updatedFnbSales };
+    setStoreData(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Transaksi berhasil dihapus.'))
+      .catch(() => toast.error('Gagal menghapus transaksi. Coba lagi.'));
+  };
+
   const handleUpdateSaleStatus = (id: string, status: SaleStatus, dpAmount?: number) => {
     const updatedSales = storeData.sales.map((s) =>
       s.id === id ? { ...s, status, dpAmount: status === 'dp' ? dpAmount : undefined } : s
@@ -440,6 +461,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeStore={activeStore}
+        storeType={storeData.storeType}
         handleLogoutStore={handleLogoutStore}
       />
 
@@ -460,30 +482,49 @@ export default function App() {
         )}
 
         {activeTab === "stok" && (
-          <InventoryTab
-            metrics={metrics}
-            storeData={storeData}
-            filterMonth={filterMonth}
-            onFilterMonthChange={setFilterMonth}
-            onAddInventory={handleAddInventory}
-            onDeleteInventory={handleDeleteInventory}
-            onUpdateInventory={handleUpdateInventory}
-            onAddRestock={handleAddRestock}
-            onDeleteRestock={handleDeleteRestock}
-            onUploadError={(msg) => toast.error(msg)}
-          />
+          storeData.storeType === 'fnb'
+            ? <FnbInventoryTab
+                metrics={metrics}
+                filterMonth={filterMonth}
+                onFilterMonthChange={setFilterMonth}
+                onAddInventory={handleAddInventory}
+                onDeleteInventory={handleDeleteInventory}
+                onUpdateInventory={handleUpdateInventory}
+                onUploadError={(msg) => toast.error(msg)}
+              />
+            : <InventoryTab
+                metrics={metrics}
+                storeData={storeData}
+                filterMonth={filterMonth}
+                onFilterMonthChange={setFilterMonth}
+                onAddInventory={handleAddInventory}
+                onDeleteInventory={handleDeleteInventory}
+                onUpdateInventory={handleUpdateInventory}
+                onAddRestock={handleAddRestock}
+                onDeleteRestock={handleDeleteRestock}
+                onUploadError={(msg) => toast.error(msg)}
+              />
         )}
 
         {activeTab === "penjualan" && (
-          <SalesTab
-            storeData={storeData}
-            metrics={metrics}
-            filterMonth={filterMonth}
-            onFilterMonthChange={setFilterMonth}
-            onAddSale={handleAddSale}
-            onDeleteSale={handleDeleteSale}
-            onUpdateSaleStatus={handleUpdateSaleStatus}
-          />
+          storeData.storeType === 'fnb'
+            ? <FnbSalesTab
+                storeData={storeData}
+                metrics={metrics}
+                filterMonth={filterMonth}
+                onFilterMonthChange={setFilterMonth}
+                onAddFnbSale={handleAddFnbSale}
+                onDeleteFnbSale={handleDeleteFnbSale}
+              />
+            : <SalesTab
+                storeData={storeData}
+                metrics={metrics}
+                filterMonth={filterMonth}
+                onFilterMonthChange={setFilterMonth}
+                onAddSale={handleAddSale}
+                onDeleteSale={handleDeleteSale}
+                onUpdateSaleStatus={handleUpdateSaleStatus}
+              />
         )}
 
         {activeTab === "pengeluaran" && (
