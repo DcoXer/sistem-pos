@@ -24,7 +24,10 @@ export default function FnbSalesTab({
   onAddFnbSale, onDeleteFnbSale,
 }: FnbSalesTabProps) {
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  });
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
