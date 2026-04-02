@@ -23,20 +23,22 @@ export default function ClosingTab({ storeData, metrics }: ClosingTabProps) {
   const [selectedDate, setSelectedDate] = useState(() => toYMD(new Date()));
 
   const prevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(toYMD(d));
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d - 1);
+    setSelectedDate(toYMD(date));
   };
 
   const nextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
+    const [y, m, d] = selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d + 1);
     const today = toYMD(new Date());
-    if (toYMD(d) <= today) setSelectedDate(toYMD(d));
+    if (toYMD(date) <= today) setSelectedDate(toYMD(date));
   };
 
   const isToday = selectedDate === toYMD(new Date());
-  const dateObj = new Date(selectedDate);
+  // Pakai local date parsing biar tidak kena timezone issue
+  const [dy, dm, dd] = selectedDate.split('-').map(Number);
+  const dateObj = new Date(dy, dm - 1, dd);
   const dayLabel = `${DAYS[dateObj.getDay()]}, ${fmtDate(dateObj)}`;
 
   // ==============================
