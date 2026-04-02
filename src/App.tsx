@@ -255,9 +255,15 @@ export default function App() {
   // ==============================
 
   useEffect(() => {
-    const savedStore = localStorage.getItem("merchantOsStoreCode");
+    // Coba key baru dulu, fallback ke key lama untuk backward compat
+    const savedStore =
+      localStorage.getItem("systemPosStoreCode") ||
+      localStorage.getItem("merchantOsStoreCode");
 
     if (savedStore && user) {
+      // Migrate ke key baru kalau masih pakai key lama
+      localStorage.setItem("systemPosStoreCode", savedStore);
+      localStorage.removeItem("merchantOsStoreCode");
       setActiveStore(savedStore);
     }
   }, [user]);
@@ -268,7 +274,7 @@ export default function App() {
 
   const handleLogoutStore = () => {
     setActiveStore("");
-    localStorage.removeItem("merchantOsStoreCode");
+    localStorage.removeItem("systemPosStoreCode");
 
     setStoreData({
       inventory: [],
