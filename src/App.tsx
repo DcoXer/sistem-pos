@@ -65,49 +65,78 @@ export default function App() {
       return d.getFullYear() === fy && d.getMonth() + 1 === fm;
     };
 
+    const isFnb = storeData.storeType === 'fnb';
     const salesThisMonth = storeData.sales.filter((s) => inFilterMonth(s.date));
+    const fnbSalesThisMonth = (storeData.fnbSales || []).filter((s) => inFilterMonth(s.date));
     const expensesThisMonth = storeData.expenses.filter((e) => inFilterMonth(e.date));
 
     // ===== SHEET 1: PENJUALAN =====
-    const salesSheet = [
-      ...salesThisMonth.map((s) => {
-        const invItem = storeData.inventory.find((i) => i.sku === s.sku);
-        const total = invItem ? invItem.price * s.qty : 0;
-        const status = s.status || 'selesai';
-        const dp = status === 'dp' ? (s.dpAmount || 0) : status === 'selesai' ? total : 0;
-        const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
-        return {
-          Tanggal: fmtDate(s.date),
-          'No. Invoice': s.invoice || '-',
-          'Nama Produk': invItem?.name || s.sku,
-          SKU: s.sku,
-          Ukuran: s.size || '-',
-          Qty: s.qty,
-          'Harga Satuan': rp(invItem?.price || 0),
-          'Total Harga': rp(total),
-          Status: STATUS_LABEL[status] || status,
-          'DP Masuk': dp > 0 ? rp(dp) : '-',
-          'Sisa Tagihan': sisa > 0 ? rp(sisa) : '-',
-        };
-      }),
-      {},
-      {
-        Tanggal: 'TOTAL',
-        'No. Invoice': '',
-        'Nama Produk': '',
-        SKU: '',
-        Ukuran: '',
-        Qty: salesThisMonth.reduce((s, x) => s + x.qty, 0),
-        'Harga Satuan': '',
-        'Total Harga': rp(salesThisMonth.reduce((sum, s) => {
-          const inv = storeData.inventory.find(i => i.sku === s.sku);
-          return sum + (inv ? inv.price * s.qty : 0);
-        }, 0)),
-        Status: '',
-        'DP Masuk': rp(salesThisMonth.filter(s => s.status === 'dp').reduce((sum, s) => sum + (s.dpAmount || 0), 0)),
-        'Sisa Tagihan': '',
-      },
-    ];
+    const salesSheet = isFnb
+      ? [
+          // FnB — tiap transaksi bisa multi item, expand per item
+          ...fnbSalesThisMonth.flatMap((s) =>
+            s.items.map((si) => {
+              const invItem = storeData.inventory.find((i) => i.sku === si.sku);
+              return {
+                Tanggal: fmtDate(s.date),
+                'Nama Produk': invItem?.name || si.sku,
+                SKU: si.sku,
+                Qty: si.qty,
+                'Harga Satuan': rp(invItem?.price || 0),
+                'Subtotal': rp((invItem?.price || 0) * si.qty),
+              };
+            })
+          ),
+          {},
+          {
+            Tanggal: 'TOTAL',
+            'Nama Produk': '',
+            SKU: '',
+            Qty: fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => sum + si.qty, 0),
+            'Harga Satuan': '',
+            'Subtotal': rp(fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)),
+          },
+        ]
+      : [
+          // Fashion
+          ...salesThisMonth.map((s) => {
+            const invItem = storeData.inventory.find((i) => i.sku === s.sku);
+            const total = invItem ? invItem.price * s.qty : 0;
+            const status = s.status || 'selesai';
+            const dp = status === 'dp' ? (s.dpAmount || 0) : status === 'selesai' ? total : 0;
+            const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
+            return {
+              Tanggal: fmtDate(s.date),
+              'No. Invoice': s.invoice || '-',
+              'Nama Produk': invItem?.name || s.sku,
+              SKU: s.sku,
+              Ukuran: s.size || '-',
+              Qty: s.qty,
+              'Harga Satuan': rp(invItem?.price || 0),
+              'Total Harga': rp(total),
+              Status: STATUS_LABEL[status] || status,
+              'DP Masuk': dp > 0 ? rp(dp) : '-',
+              'Sisa Tagihan': sisa > 0 ? rp(sisa) : '-',
+            };
+          }),
+          {},
+          {
+            Tanggal: 'TOTAL',
+            'No. Invoice': '',
+            'Nama Produk': '',
+            SKU: '',
+            Ukuran: '',
+            Qty: salesThisMonth.reduce((s, x) => s + x.qty, 0),
+            'Harga Satuan': '',
+            'Total Harga': rp(salesThisMonth.reduce((sum, s) => {
+              const inv = storeData.inventory.find(i => i.sku === s.sku);
+              return sum + (inv ? inv.price * s.qty : 0);
+            }, 0)),
+            Status: '',
+            'DP Masuk': rp(salesThisMonth.filter(s => s.status === 'dp').reduce((sum, s) => sum + (s.dpAmount || 0), 0)),
+            'Sisa Tagihan': '',
+          },
+        ];
 
     // ===== SHEET 2: RINGKASAN STOK =====
     const inventorySheet = [
@@ -204,19 +233,39 @@ export default function App() {
     ];
 
     // ===== SHEET 5: LABA RUGI =====
+    // Hitung revenue bulan ini saja (metrics adalah akumulatif semua waktu)
+    const revenueMonth = isFnb
+      ? fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)
+      : salesThisMonth.reduce((sum, s) => {
+          const inv = storeData.inventory.find(i => i.sku === s.sku);
+          return sum + (inv ? inv.price * s.qty : 0);
+        }, 0);
+    const hppMonth = isFnb
+      ? fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => {
+          const inv = storeData.inventory.find(i => i.sku === si.sku);
+          return sum + (inv ? inv.hpp * si.qty : 0);
+        }, 0)
+      : salesThisMonth.reduce((sum, s) => {
+          const inv = storeData.inventory.find(i => i.sku === s.sku);
+          return sum + (inv ? inv.hpp * s.qty : 0);
+        }, 0);
+    const expenseMonth = expensesThisMonth.reduce((sum, e) => sum + e.amount, 0);
+    const grossMonth = revenueMonth - hppMonth;
+    const netMonth = grossMonth - expenseMonth;
+
     const profitSheet = [
       { Keterangan: 'PENDAPATAN', Nominal: '' },
-      { Keterangan: 'Total Omzet (semua order)', Nominal: rp(metrics.totalRevenue) },
+      { Keterangan: 'Total Omzet', Nominal: rp(revenueMonth) },
       { Keterangan: '', Nominal: '' },
       { Keterangan: 'BEBAN POKOK PENJUALAN', Nominal: '' },
-      { Keterangan: 'Total HPP Terjual', Nominal: rp(metrics.totalHppSold) },
+      { Keterangan: 'Total HPP Terjual', Nominal: rp(hppMonth) },
       { Keterangan: '', Nominal: '' },
-      { Keterangan: 'Laba Kotor', Nominal: rp(metrics.grossProfit) },
+      { Keterangan: 'Laba Kotor', Nominal: rp(grossMonth) },
       { Keterangan: '', Nominal: '' },
       { Keterangan: 'BEBAN OPERASIONAL', Nominal: '' },
-      { Keterangan: 'Total Pengeluaran', Nominal: rp(metrics.totalExpenses) },
+      { Keterangan: 'Total Pengeluaran', Nominal: rp(expenseMonth) },
       { Keterangan: '', Nominal: '' },
-      { Keterangan: 'LABA BERSIH', Nominal: rp(metrics.netProfit) },
+      { Keterangan: 'LABA BERSIH', Nominal: rp(netMonth) },
     ];
 
     // Helper: buat sheet dengan judul di baris 1, lalu header + data mulai baris 3
