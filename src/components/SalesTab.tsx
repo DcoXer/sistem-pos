@@ -168,6 +168,7 @@ export default function SalesTab({
   const [editingSale, setEditingSale] = useState<SaleItem | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [filterDate, setFilterDate] = useState('');
   const PAGE_SIZE = 10;
 
   const getAvailableStock = () => {
@@ -201,20 +202,24 @@ export default function SalesTab({
   };
 
   const handleSearchChange = (q: string) => { setSearch(q); setPage(1); };
+  const handleDateChange = (d: string) => { setFilterDate(d); setPage(1); };
 
   // Filter bulan
   const filteredSales = useMemo(() => {
     const [fy, fm] = filterMonth.split('-').map(Number);
     const q = search.toLowerCase();
-    return (storeData.sales || []).filter(s => {
-      const d = new Date(s.date);
-      const inMonth = d.getFullYear() === fy && d.getMonth() + 1 === fm;
-      if (!inMonth) return false;
-      if (!q) return true;
-      const item = metrics.stockMap[s.sku];
-      return s.sku.toLowerCase().includes(q) || (item?.name || '').toLowerCase().includes(q) || (s.invoice || '').toLowerCase().includes(q);
-    });
-  }, [storeData.sales, filterMonth, search, metrics.stockMap]);
+    return (storeData.sales || [])
+      .filter(s => {
+        const d = new Date(s.date);
+        const inMonth = d.getFullYear() === fy && d.getMonth() + 1 === fm;
+        if (!inMonth) return false;
+        if (filterDate && s.date !== filterDate) return false;
+        if (!q) return true;
+        const item = metrics.stockMap[s.sku];
+        return s.sku.toLowerCase().includes(q) || (item?.name || '').toLowerCase().includes(q) || (s.invoice || '').toLowerCase().includes(q);
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [storeData.sales, filterMonth, filterDate, search, metrics.stockMap]);
 
   const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
   const paginatedSales = filteredSales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -233,7 +238,23 @@ export default function SalesTab({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
         <h2 className="text-2xl font-bold">Catat Penjualan</h2>
-        <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
+        <div className="flex flex-wrap items-center gap-2">
+          <MonthFilter value={filterMonth} onChange={v => { onFilterMonthChange(v); setFilterDate(''); setPage(1); }} />
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={filterDate}
+              onChange={e => handleDateChange(e.target.value)}
+              className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+            />
+            {filterDate && (
+              <button onClick={() => handleDateChange('')}
+                className="text-xs text-gray-400 hover:text-gray-600 transition">
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Form */}
