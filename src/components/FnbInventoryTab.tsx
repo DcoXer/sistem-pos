@@ -299,7 +299,6 @@ export default function FnbInventoryTab({
 
       {editingItem && (
         <EditModal
-          className="bg-transparant"
           item={editingItem}
           onClose={() => setEditingItem(null)}
           onSave={(oldSku, updated) => { onUpdateInventory(oldSku, updated); setEditingItem(null); }}
