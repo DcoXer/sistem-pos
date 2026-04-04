@@ -15,13 +15,7 @@ const D = {
   input: '#1a1a24',
 };
 
-const inputStyle = (extra?: object) => ({
-  background: '#1a1a24',
-  border: '1px solid #ffffff12',
-  color: '#f1f0f5',
-  borderRadius: 10,
-  ...extra,
-});
+
 
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
@@ -116,7 +110,7 @@ export default function FnbSalesTab({
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-        <h2 className="text-xl font-semibold" style={{ color: D.text }} style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)' }}>Kasir</h2>
+        <h2 className="text-xl font-semibold" style={{ color: D.text }}>Kasir</h2>
         <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
       </div>
 
