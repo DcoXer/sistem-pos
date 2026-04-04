@@ -15,7 +15,6 @@ const D = {
   input: '#1a1a24',
 };
 
-const inputCls = "outline-none transition";
 const inputStyle = (extra?: object) => ({
   background: '#1a1a24',
   border: '1px solid #ffffff12',
