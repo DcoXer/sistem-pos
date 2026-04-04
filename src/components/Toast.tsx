@@ -59,8 +59,6 @@ function ToastItem({ toast, onRemove }: { toast: ToastMessage; onRemove: (id: nu
   );
 }
 
-import { useState } from 'react';
-
 export function useToast() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const show = (type: ToastType, message: string) => {
