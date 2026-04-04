@@ -441,7 +441,7 @@ export default function InventoryTab({
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
-        <h2 className="text-xl font-semibold" style={{ color: D.text }} style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)' }}>Database & Stok Barang</h2>
+        <h2 className="text-xl font-semibold" style={{ color: D.text }}>Database & Stok Barang</h2>
         <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
       </div>
 
