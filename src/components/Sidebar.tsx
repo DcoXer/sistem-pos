@@ -1,4 +1,10 @@
-import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut, CalendarCheck } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  Package, 
+  ShoppingCart, 
+  Receipt, 
+  LogOut, 
+  CalendarCheck } from 'lucide-react';
 import type { StoreType } from '../types';
 
 interface SidebarProps {
@@ -76,7 +82,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, storeTyp
           <button
             onClick={handleLogoutStore}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium"
-            style={{ color: '#6b7280' }}
+            style={{ color: '#ff0505' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = '#ef444410'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6b7280'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
@@ -102,7 +108,7 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, storeTyp
         <button
           onClick={handleLogoutStore}
           className="p-1.5 rounded-lg transition"
-          style={{ color: '#6b7280' }}
+          style={{ color: '#ff0505' }}
         >
           <LogOut size={16} />
         </button>
