@@ -120,7 +120,7 @@ export default function FnbSalesTab({
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold" style={{ color: D.text }}>Pilih Produk</p>
             <div className="space-y-1">
-              <label className="text-xs ">Tanggal Transaksi</label>
+              <label className="text-xs ">Tgl Transaksi</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
     className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
             </div>
@@ -232,12 +232,13 @@ export default function FnbSalesTab({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-base" style={{ color: D.text }}>Riwayat Transaksi</h3>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+            <div className="bg-transparant border border-green-100 rounded-lg px-3 py-1.5">
               <span className="text-xs ">{filteredSales.length} transaksi · </span>
               <span className="text-xs font-bold text-green-700">{formatRp(totalOmzet)}</span>
             </div>
             <input
               type="date"
+              placeholder="Filter PerTgl..."
               value={filterDate}
               onChange={e => { setFilterDate(e.target.value); setPage(1); }}
   className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }}
