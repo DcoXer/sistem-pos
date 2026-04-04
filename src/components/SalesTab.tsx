@@ -5,13 +5,34 @@ import { SIZES } from '../types';
 import MonthFilter from './MonthFilter';
 import Pagination from './Pagination';
 
+// Dark theme tokens
+const D = {
+  surface: '#13131a', elevated: '#1a1a24', border: '#ffffff0d',
+  accent: '#8b5cf6', accentDim: '#8b5cf615',
+  text: '#f1f0f5', muted: '#6b7280',
+  success: '#10b981', successDim: '#10b98115',
+  danger: '#ef4444', dangerDim: '#ef444415',
+  warning: '#f59e0b', warningDim: '#f59e0b15',
+  input: '#1a1a24',
+};
+
+const inputCls = "outline-none transition";
+const inputStyle = (extra?: object) => ({
+  background: '#1a1a24',
+  border: '1px solid #ffffff12',
+  color: '#f1f0f5',
+  borderRadius: 10,
+  ...extra,
+});
+
+
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
 }).format(num);
 
 const STATUS_CONFIG: Record<SaleStatus, { label: string; color: string; bg: string }> = {
   pending: { label: 'Pending (PO)', color: 'text-yellow-700', bg: 'bg-yellow-100' },
-  dp:      { label: 'DP',          color: 'text-blue-700',   bg: 'bg-blue-100'   },
+  dp:      { label: 'DP',          color: 'text-[var(--accent)] text-700',   bg: 'bg-blue-100'   },
   selesai: { label: 'Selesai',     color: 'text-green-700',  bg: 'bg-green-100'  },
 };
 
@@ -42,35 +63,35 @@ function StatusModal({ sale, totalAmount, itemName, onClose, onSave }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <div>
             <h3 className="font-bold text-base">Ubah Status</h3>
-            <p className="text-xs text-gray-400">{sale.invoice || sale.id} — {itemName} {sale.size}</p>
+            <p className="text-xs ">{sale.invoice || sale.id} — {itemName} {sale.size}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+          <button onClick={onClose} className=" hover:text-gray-600"><X size={20} /></button>
         </div>
         <div className="p-6 space-y-3">
           {(Object.entries(STATUS_CONFIG) as [SaleStatus, typeof STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
             <button key={key} type="button" onClick={() => setSelected(key)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition ${
-                selected === key ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
+                selected === key ? 'border-b border-[var(--border)]lue-500 bg-blue-50' : 'border-gray-100 hover:border-gray-200'
               }`}>
               <span className={`text-sm font-semibold ${cfg.color}`}>{cfg.label}</span>
-              {selected === key && <Check size={16} className="text-blue-500" />}
+              {selected === key && <Check size={16} className="text-[var(--accent)] text-500" />}
             </button>
           ))}
           {selected === 'dp' && (
             <div className="space-y-2 pt-1">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Nominal DP Masuk (Rp)</label>
+                <label className="text-xs font-semibold  uppercase">Nominal DP Masuk (Rp)</label>
                 <input type="number" min="0" max={totalAmount} value={dpAmount}
                   onChange={e => setDpAmount(e.target.value)} placeholder="0"
-                  className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
               </div>
-              <div className="bg-blue-50 rounded-lg px-3 py-2 space-y-1 text-xs">
-                <div className="flex justify-between text-gray-500"><span>Total order</span><span className="font-medium">{formatRp(totalAmount)}</span></div>
-                <div className="flex justify-between text-blue-700"><span>DP masuk</span><span className="font-bold">{formatRp(Number(dpAmount) || 0)}</span></div>
-                <div className={`flex justify-between font-bold border-t border-blue-100 pt-1 ${sisa < 0 ? 'text-red-600' : 'text-gray-700'}`}>
+              <div className="rounded-lg px-3 py-2 space-y-1 text-xs" style={{ background: D.accentDim }}>
+                <div className="flex justify-between "><span>Total order</span><span className="font-medium">{formatRp(totalAmount)}</span></div>
+                <div className="flex justify-between text-[var(--accent)] text-700"><span>DP masuk</span><span className="font-bold">{formatRp(Number(dpAmount) || 0)}</span></div>
+                <div className={`flex justify-between font-bold border-t border-b border-[var(--border)]lue-100 pt-1 ${sisa < 0 ? 'text-red-600' : 'text-gray-700'}`}>
                   <span>Sisa tagihan</span><span>{formatRp(sisa < 0 ? 0 : sisa)}</span>
                 </div>
               </div>
@@ -79,11 +100,11 @@ function StatusModal({ sale, totalAmount, itemName, onClose, onSave }: {
           )}
         </div>
         <div className="flex justify-end gap-3 px-6 pb-5">
-          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition">Batal</button>
+          <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-gray-200 ">Batal</button>
           <button
             onClick={() => { onSave(sale.id, selected, selected === 'dp' ? Number(dpAmount) || 0 : undefined); onClose(); }}
             disabled={selected === 'dp' && Number(dpAmount) > totalAmount}
-            className="px-5 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center gap-2 font-medium disabled:opacity-40">
+            className="px-5 py-2 text-sm bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-dim)] transition flex items-center gap-2 font-medium disabled:opacity-40">
             <Check size={15} /> Simpan
           </button>
         </div>
@@ -108,7 +129,7 @@ function SaleCard({ sale, item, onDelete, onEditStatus }: {
   const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+    <div className="overflow-hidden flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
       {/* Gambar produk */}
       {item?.imageUrl
         ? <img src={item.imageUrl} alt={item?.name} className="w-full h-32 object-cover" />
@@ -121,20 +142,20 @@ function SaleCard({ sale, item, onDelete, onEditStatus }: {
             <h3 className="font-bold text-sm text-gray-800 leading-tight">
               {item ? item.name : <span className="text-red-400 line-through">{sale.sku}</span>}
             </h3>
-            <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">{sale.size}</span>
+            <span className="bg-blue-100 text-[var(--accent)] text-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">{sale.size}</span>
           </div>
-          <p className="text-xs text-gray-400 font-mono">{sale.invoice || '-'} · {sale.date}</p>
+          <p className="text-xs  font-mono">{sale.invoice || '-'} · {sale.date}</p>
         </div>
 
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-gray-700">{formatRp(total)}</span>
-          <span className="text-xs text-gray-400">×{sale.qty} pcs</span>
+          <span className="text-xs ">×{sale.qty} pcs</span>
         </div>
 
         {/* DP / sisa */}
         {status !== 'selesai' && (
           <div className="text-xs space-y-0.5">
-            {dp > 0 && <p className="text-blue-600">DP: {formatRp(dp)}</p>}
+            {dp > 0 && <p className="text-[var(--accent)] text-600">DP: {formatRp(dp)}</p>}
             {sisa > 0 && <p className="text-red-500 font-medium">Sisa: {formatRp(sisa)}</p>}
           </div>
         )}
@@ -236,8 +257,8 @@ export default function SalesTab({
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-        <h2 className="text-2xl font-bold">Catat Penjualan</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+        <h2 className="text-xl font-semibold" style={{ color: D.text }} style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)' }}>Catat Penjualan</h2>
         <div className="flex flex-wrap items-center gap-2">
           <MonthFilter value={filterMonth} onChange={v => { onFilterMonthChange(v); setFilterDate(''); setPage(1); }} />
           <div className="flex items-center gap-2">
@@ -249,7 +270,7 @@ export default function SalesTab({
             />
             {filterDate && (
               <button onClick={() => handleDateChange('')}
-                className="text-xs text-gray-400 hover:text-gray-600 transition">
+                className="text-xs  hover:text-gray-600 transition">
                 Reset
               </button>
             )}
@@ -258,27 +279,27 @@ export default function SalesTab({
       </div>
 
       {/* Form */}
-      <form onSubmit={handleAdd} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+      <form onSubmit={handleAdd} className="p-5space-y-4" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
         <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Tanggal</label>
+            <label className="text-xs font-semibold  uppercase">Tanggal</label>
             <input required type="date" value={newSale.date}
               onChange={e => setNewSale({ ...newSale, date: e.target.value })}
-              className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">No. Invoice</label>
+            <label className="text-xs font-semibold  uppercase">No. Invoice</label>
             <input value={newSale.invoice} onChange={e => setNewSale({ ...newSale, invoice: e.target.value })}
               placeholder="INV-001"
-              className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+              className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
           </div>
 
           {/* Pilih produk — dengan gambar */}
           <div className="space-y-1 md:col-span-2">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Pilih Barang</label>
+            <label className="text-xs font-semibold  uppercase">Pilih Barang</label>
             <select required value={newSale.sku}
               onChange={e => setNewSale({ ...newSale, sku: e.target.value, size: '', qty: '' })}
-              className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white">
+              className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }}>
               <option value="" disabled>-- Pilih Produk --</option>
               {inventoryOptions.map((item: any) => (
                 <option key={item.sku} value={item.sku}>{item.sku} - {item.name}</option>
@@ -287,11 +308,11 @@ export default function SalesTab({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">Ukuran</label>
+            <label className="text-xs font-semibold  uppercase">Ukuran</label>
             <select required value={newSale.size}
               onChange={e => setNewSale({ ...newSale, size: e.target.value as any, qty: '' })}
               disabled={!newSale.sku}
-              className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white disabled:bg-gray-100 disabled:text-gray-400">
+              className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }}>
               <option value="" disabled>-- Ukuran --</option>
               {SIZES.map(size => {
                 const item = metrics.stockMap[newSale.sku];
@@ -306,15 +327,15 @@ export default function SalesTab({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs font-semibold text-gray-500 uppercase">
+            <label className="text-xs font-semibold  uppercase">
               Qty {availableStock !== null && <span className="text-green-600 normal-case font-normal">(maks: {availableStock})</span>}
             </label>
             <div className="flex gap-2">
               <input required type="number" min="1" max={availableStock ?? undefined}
                 value={newSale.qty} onChange={e => setNewSale({ ...newSale, qty: e.target.value })}
                 placeholder="1" disabled={!newSale.size}
-                className="w-full border rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100" />
-              <button type="submit" className="bg-green-600 text-white p-2 rounded-lg hover:bg-green-700 transition">
+                className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
+              <button type="submit" className="p-2 rounded-lg transition" style={{ background: D.success, color: "#fff" }}>
                 <Plus size={20} />
               </button>
             </div>
@@ -327,7 +348,7 @@ export default function SalesTab({
             <img src={metrics.stockMap[newSale.sku].imageUrl} alt="" className="w-12 h-12 object-cover rounded-lg" />
             <div>
               <p className="text-sm font-semibold">{metrics.stockMap[newSale.sku].name}</p>
-              <p className="text-xs text-gray-400">{formatRp(metrics.stockMap[newSale.sku].price)} / pcs</p>
+              <p className="text-xs ">{formatRp(metrics.stockMap[newSale.sku].price)} / pcs</p>
             </div>
           </div>
         )}
@@ -335,12 +356,12 @@ export default function SalesTab({
         {/* Status + DP */}
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-wrap gap-2 items-center">
-            <span className="text-xs font-semibold text-gray-500 uppercase">Status:</span>
+            <span className="text-xs font-semibold  uppercase">Status:</span>
             {(Object.entries(STATUS_CONFIG) as [SaleStatus, typeof STATUS_CONFIG[SaleStatus]][]).map(([key, cfg]) => (
               <button key={key} type="button"
                 onClick={() => setNewSale({ ...newSale, status: key, dpAmount: '' })}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border-2 transition ${
-                  newSale.status === key ? `${cfg.bg} ${cfg.color} border-current` : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                  newSale.status === key ? `${cfg.bg} ${cfg.color} border-current` : 'border-gray-200  hover:border-gray-300'
                 }`}>
                 {cfg.label}
               </button>
@@ -349,14 +370,14 @@ export default function SalesTab({
           {newSale.status === 'dp' && (
             <div className="flex items-end gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-gray-500 uppercase">Nominal DP Masuk (Rp)</label>
+                <label className="text-xs font-semibold  uppercase">Nominal DP Masuk (Rp)</label>
                 <input type="number" min="0" max={newSaleTotal || undefined}
                   value={newSale.dpAmount} onChange={e => setNewSale({ ...newSale, dpAmount: e.target.value })}
                   placeholder="0"
-                  className="border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none w-40" />
+                  className="border rounded-lg p-2 text-sm focus:ring-2 focus:ring-[var(--accent)] outline-none w-40" />
               </div>
               {newSale.dpAmount && newSaleTotal > 0 && (
-                <div className="text-xs text-gray-500 pb-2">
+                <div className="text-xs  pb-2">
                   Sisa: <span className="font-bold text-gray-700">{formatRp(newSaleTotal - Number(newSale.dpAmount))}</span>
                 </div>
               )}
@@ -367,27 +388,27 @@ export default function SalesTab({
 
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-gray-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-400">Total Order</p>
-          <p className="text-sm font-bold text-gray-700 mt-0.5">{formatRp(totalAll)}</p>
+        <div className="rounded-xl px-4 py-3" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+          <p className="text-xs ">Total Order</p>
+          <p className="text-sm font-bold mt-0.5" style={{ color: D.text }}>{formatRp(totalAll)}</p>
         </div>
-        <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-400">Sudah Lunas</p>
-          <p className="text-sm font-bold text-green-700 mt-0.5">{formatRp(totalLunas)}</p>
+        <div className="rounded-xl px-4 py-3" style={{ background: D.successDim, border: `1px solid ${D.success}20` }}>
+          <p className="text-xs ">Sudah Lunas</p>
+          <p className="text-sm font-bold mt-0.5" style={{ color: D.success }}>{formatRp(totalLunas)}</p>
         </div>
-        <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-400">DP Masuk</p>
-          <p className="text-sm font-bold text-blue-700 mt-0.5">{formatRp(totalDP)}</p>
+        <div className="bg-blue-50 border border-b border-[var(--border)]lue-100 rounded-xl px-4 py-3">
+          <p className="text-xs ">DP Masuk</p>
+          <p className="text-sm font-bold text-[var(--accent)] text-700 mt-0.5">{formatRp(totalDP)}</p>
         </div>
-        <div className="bg-yellow-50 border border-yellow-100 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-400">Belum Lunas</p>
-          <p className="text-sm font-bold text-yellow-700 mt-0.5">{formatRp(totalAll - totalLunas - totalDP)}</p>
+        <div className="rounded-xl px-4 py-3" style={{ background: D.warningDim, border: `1px solid ${D.warning}20` }}>
+          <p className="text-xs ">Belum Lunas</p>
+          <p className="text-sm font-bold mt-0.5" style={{ color: D.warning }}>{formatRp(totalAll - totalLunas - totalDP)}</p>
         </div>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 " />
         <input value={search} onChange={e => handleSearchChange(e.target.value)}
           placeholder="Cari SKU, nama produk, atau invoice..."
           className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-green-500 outline-none" />
@@ -395,7 +416,7 @@ export default function SalesTab({
 
       {/* Card grid */}
       {filteredSales.length === 0
-        ? <div className="text-center py-16 text-gray-400">
+        ? <div className="text-center py-16 ">
             {search ? `Tidak ada transaksi dengan kata kunci "${search}"` : 'Tidak ada penjualan di bulan ini.'}
           </div>
         : (
@@ -415,7 +436,7 @@ export default function SalesTab({
             })}
           </div>
           <div className="flex items-center justify-between pt-2">
-            <p className="text-xs text-gray-400">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
+            <p className="text-xs ">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
             <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
           </>
