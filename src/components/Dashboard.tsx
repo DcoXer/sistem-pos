@@ -135,11 +135,6 @@ export default function DashboardTab({
     lowStockItems.sort((a, b) => a.remaining - b.remaining);
   }
 
-  const card = (content: React.ReactNode, style?: React.CSSProperties) => (
-    <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12, ...style }}>
-      {content}
-    </div>
-  );
 
   return (
     <div className="space-y-6" style={{ color: D.text }}>
