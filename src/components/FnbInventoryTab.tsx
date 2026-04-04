@@ -83,7 +83,8 @@ function EditModal({ item, onClose, onSave, onUploadError }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="rounded-2xl w-full max-w-md shadow-xl"
+           style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <h3 className="font-bold text-lg">Edit Produk</h3>
           <button onClick={onClose} className=" hover:text-gray-600"><X size={20} /></button>
