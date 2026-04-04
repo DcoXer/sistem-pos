@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection, getDocs, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { StoreData } from '../types';
 import type { User } from 'firebase/auth';
