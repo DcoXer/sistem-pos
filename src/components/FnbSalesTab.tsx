@@ -4,6 +4,27 @@ import type { StoreData, FnbSaleItem } from '../types';
 import MonthFilter from './MonthFilter';
 import Pagination from './Pagination';
 
+// Dark theme tokens
+const D = {
+  surface: '#13131a', elevated: '#1a1a24', border: '#ffffff0d',
+  accent: '#8b5cf6', accentDim: '#8b5cf615',
+  text: '#f1f0f5', muted: '#6b7280',
+  success: '#10b981', successDim: '#10b98115',
+  danger: '#ef4444', dangerDim: '#ef444415',
+  warning: '#f59e0b', warningDim: '#f59e0b15',
+  input: '#1a1a24',
+};
+
+const inputCls = "outline-none transition";
+const inputStyle = (extra?: object) => ({
+  background: '#1a1a24',
+  border: '1px solid #ffffff12',
+  color: '#f1f0f5',
+  borderRadius: 10,
+  ...extra,
+});
+
+
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
 }).format(num);
@@ -95,8 +116,8 @@ export default function FnbSalesTab({
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
-        <h2 className="text-2xl font-bold">Kasir</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+        <h2 className="text-xl font-semibold" style={{ color: D.text }} style={{ fontFamily: 'Syne, sans-serif', color: 'var(--text-primary)' }}>Kasir</h2>
         <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
       </div>
 
@@ -106,7 +127,7 @@ export default function FnbSalesTab({
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-gray-600">Pilih Produk</p>
             <div className="space-y-1">
-              <label className="text-xs text-gray-400">Tanggal Transaksi</label>
+              <label className="text-xs ">Tanggal Transaksi</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
                 className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none" />
             </div>
@@ -137,7 +158,7 @@ export default function FnbSalesTab({
               );
             })}
             {inventory.length === 0 && (
-              <div className="col-span-3 text-center py-12 text-gray-400 text-sm">
+              <div className="col-span-3 text-center py-12  text-sm">
                 Belum ada produk. Tambah di tab Produk dulu.
               </div>
             )}
@@ -145,9 +166,9 @@ export default function FnbSalesTab({
         </div>
 
         {/* Keranjang */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col">
-          <div className="px-5 py-4 border-b flex items-center gap-2">
-            <ShoppingCart size={18} className="text-gray-500" />
+        <div className="flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
+          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
+            <ShoppingCart size={18} className="" />
             <h3 className="font-bold text-base">Keranjang</h3>
             {cartQty > 0 && (
               <span className="ml-auto bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
@@ -158,7 +179,7 @@ export default function FnbSalesTab({
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
             {cart.length === 0
-              ? <p className="text-sm text-gray-400 text-center py-8">Ketuk produk untuk menambahkan</p>
+              ? <p className="text-sm  text-center py-8">Ketuk produk untuk menambahkan</p>
               : cart.map(c => {
                   const item = invMap[c.sku];
                   return (
@@ -193,7 +214,7 @@ export default function FnbSalesTab({
           </div>
 
           {cart.length > 0 && (
-            <div className="p-4 border-t space-y-3">
+            <div className="p-4 border-t border-[var(--border)] space-y-3">
               <div className="flex justify-between text-base">
                 <span className="font-bold text-gray-700">Total</span>
                 <span className="font-bold text-green-600">{formatRp(cartTotal)}</span>
@@ -213,7 +234,7 @@ export default function FnbSalesTab({
           <h3 className="font-bold text-base">Riwayat Transaksi</h3>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
-              <span className="text-xs text-gray-400">{filteredSales.length} transaksi · </span>
+              <span className="text-xs ">{filteredSales.length} transaksi · </span>
               <span className="text-xs font-bold text-green-700">{formatRp(totalOmzet)}</span>
             </div>
             <input
@@ -224,7 +245,7 @@ export default function FnbSalesTab({
             />
             {filterDate && (
               <button onClick={() => { setFilterDate(''); setPage(1); }}
-                className="text-xs text-gray-400 hover:text-gray-600 transition">
+                className="text-xs  hover:text-gray-600 transition">
                 Reset
               </button>
             )}
@@ -232,7 +253,7 @@ export default function FnbSalesTab({
         </div>
 
         {filteredSales.length === 0
-          ? <div className="text-center py-10 text-gray-400 text-sm bg-white rounded-xl border border-gray-100">
+          ? <div className="text-center py-10  text-sm bg-white rounded-xl border border-gray-100">
               Belum ada transaksi di bulan ini.
             </div>
           : (
@@ -256,7 +277,7 @@ export default function FnbSalesTab({
                     <div className="flex items-center gap-3 shrink-0">
                       <span className="text-sm font-bold text-green-600">{formatRp(sale.total)}</span>
                       <button onClick={() => onDeleteFnbSale(sale.id)}
-                        className="text-red-400 hover:text-red-600 transition">
+                        className="transition" style={{ color: D.muted }}>
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -264,7 +285,7 @@ export default function FnbSalesTab({
                 ))}
               </div>
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs text-gray-400">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
+                <p className="text-xs ">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
                 <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             </>
