@@ -118,11 +118,11 @@ export default function FnbSalesTab({
         {/* Menu produk */}
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-600">Pilih Produk</p>
+            <p className="text-sm font-semibold" style={{ color: D.text }}>Pilih Produk</p>
             <div className="space-y-1">
               <label className="text-xs ">Tanggal Transaksi</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
-                className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none" />
+    className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -130,9 +130,11 @@ export default function FnbSalesTab({
               const inCart = cart.find(c => c.sku === invItem.sku);
               return (
                 <button key={invItem.sku} onClick={() => addToCart(invItem.sku)}
-                  className={`relative bg-white rounded-xl border-2 overflow-hidden text-left transition hover:shadow-md ${
-                    inCart ? 'border-green-400' : 'border-gray-100 hover:border-gray-200'
-                  }`}
+                  className="relative rounded-xl overflow-hidden text-left transition"
+                  style={{
+                    background: D.surface,
+                    border: inCart ? `2px solid ${D.success}` : `1px solid ${D.border}`,
+                  }}
                 >
                   {invItem.imageUrl
                     ? <img src={invItem.imageUrl} alt={invItem.name} className="w-full h-28 object-cover" />
@@ -144,8 +146,8 @@ export default function FnbSalesTab({
                     </div>
                   )}
                   <div className="p-2.5">
-                    <p className="text-sm font-bold text-gray-800 leading-tight truncate">{invItem.name}</p>
-                    <p className="text-xs text-green-600 font-semibold mt-0.5">{formatRp(invItem.price)}</p>
+                    <p className="text-sm font-bold leading-tight truncate" style={{ color: '#f1f0f5' }}>{invItem.name}</p>
+                    <p className="text-xs font-semibold mt-0.5" style={{ color: D.success }}>{formatRp(invItem.price)}</p>
                   </div>
                 </button>
               );
@@ -179,24 +181,27 @@ export default function FnbSalesTab({
                     <div key={c.sku} className="flex items-center gap-2">
                       {item?.imageUrl
                         ? <img src={item.imageUrl} alt={item.name} className="w-10 h-10 object-cover rounded-lg shrink-0" />
-                        : <div className="w-10 h-10 bg-gray-100 rounded-lg shrink-0 flex items-center justify-center text-gray-300"><ImageOff size={14} /></div>
+                        : <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center" style={{ background: D.elevated }}><ImageOff size={14} style={{ color: D.muted }} /></div>
                       }
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-700 truncate">{item?.name || c.sku}</p>
-                        <p className="text-xs text-green-600">{formatRp((item?.price || 0) * c.qty)}</p>
+                        <p className="text-sm font-semibold truncate" style={{ color: D.text }}>{item?.name || c.sku}</p>
+                        <p className="text-xs" style={{ color: D.success }}>{formatRp((item?.price || 0) * c.qty)}</p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <button onClick={() => updateQty(c.sku, -1)}
-                          className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition">
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition"
+                          style={{ background: D.elevated, color: D.muted }}>
                           <Minus size={10} />
                         </button>
-                        <span className="text-sm font-bold w-6 text-center">{c.qty}</span>
+                        <span className="text-sm font-bold w-6 text-center" style={{ color: D.text }}>{c.qty}</span>
                         <button onClick={() => updateQty(c.sku, 1)}
-                          className="w-6 h-6 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition">
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition"
+                          style={{ background: D.elevated, color: D.muted }}>
                           <Plus size={10} />
                         </button>
                         <button onClick={() => removeFromCart(c.sku)}
-                          className="w-6 h-6 rounded-full bg-red-50 hover:bg-red-100 text-red-400 flex items-center justify-center transition ml-1">
+                          className="w-6 h-6 rounded-full flex items-center justify-center transition ml-1"
+                          style={{ background: D.dangerDim, color: D.danger }}>
                           <X size={10} />
                         </button>
                       </div>
@@ -209,11 +214,12 @@ export default function FnbSalesTab({
           {cart.length > 0 && (
             <div className="p-4 border-t border-[var(--border)] space-y-3">
               <div className="flex justify-between text-base">
-                <span className="font-bold text-gray-700">Total</span>
-                <span className="font-bold text-green-600">{formatRp(cartTotal)}</span>
+                <span className="font-bold" style={{ color: D.text }}>Total</span>
+                <span className="font-bold" style={{ color: D.success }}>{formatRp(cartTotal)}</span>
               </div>
               <button onClick={handleSubmit}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition flex items-center justify-center gap-2">
+                className="w-full font-bold py-3 rounded-xl transition flex items-center justify-center gap-2"
+                style={{ background: D.accent, color: '#fff' }}>
                 <Check size={18} /> Catat Penjualan
               </button>
             </div>
@@ -224,7 +230,7 @@ export default function FnbSalesTab({
       {/* Riwayat transaksi */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-bold text-base">Riwayat Transaksi</h3>
+          <h3 className="font-bold text-base" style={{ color: D.text }}>Riwayat Transaksi</h3>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
               <span className="text-xs ">{filteredSales.length} transaksi · </span>
@@ -234,7 +240,7 @@ export default function FnbSalesTab({
               type="date"
               value={filterDate}
               onChange={e => { setFilterDate(e.target.value); setPage(1); }}
-              className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+  className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }}
             />
             {filterDate && (
               <button onClick={() => { setFilterDate(''); setPage(1); }}
@@ -253,14 +259,14 @@ export default function FnbSalesTab({
             <>
               <div className="space-y-2">
                 {paginatedSales.map(sale => (
-                  <div key={sale.id} className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-start justify-between gap-3">
+                  <div key={sale.id} className="rounded-xl px-4 py-3 flex items-start justify-between gap-3" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-700">{sale.date}</p>
+                      <p className="text-sm font-semibold" style={{ color: D.text }}>{sale.date}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {sale.items.map(si => {
                           const item = metrics.stockMap[si.sku];
                           return (
-                            <span key={si.sku} className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
+                            <span key={si.sku} className="text-xs px-2 py-0.5 rounded" style={{ background: D.elevated, color: D.muted }}>
                               {item?.name || si.sku} ×{si.qty}
                             </span>
                           );
@@ -268,7 +274,7 @@ export default function FnbSalesTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-sm font-bold text-green-600">{formatRp(sale.total)}</span>
+                      <span className="text-sm font-bold" style={{ color: D.success }}>{formatRp(sale.total)}</span>
                       <button onClick={() => onDeleteFnbSale(sale.id)}
                         className="transition" style={{ color: D.muted }}>
                         <Trash2 size={15} />
