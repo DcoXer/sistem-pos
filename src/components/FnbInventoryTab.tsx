@@ -271,17 +271,17 @@ export default function FnbInventoryTab({
                   <div className="p-3 flex flex-col flex-1 space-y-2">
                     <div>
                       <p className="text-[10px]  font-mono">{item.sku}</p>
-                      <p className="font-bold text-sm text-gray-800 leading-tight">{item.name}</p>
+                      <p className="font-bold text-sm text-gray-200 leading-tight">{item.name}</p>
                       <p className="text-sm text-green-600 font-semibold mt-0.5">{formatRp(item.price)}</p>
                       <p className="text-xs ">Modal: {formatRp(item.hpp)}</p>
                     </div>
                     <div className="flex gap-2 mt-auto">
                       <button onClick={() => setEditingItem(item)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[var(--accent)] text-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[var(--accent)] text-600 bg-purple-800 hover:bg-purple-900 rounded-lg transition">
                         <Pencil size={12} /> Edit
                       </button>
                       <button onClick={() => onDeleteInventory(item.sku)}
-                        className="px-2.5 py-1.5 text-xs text-red-400 bg-red-50 hover:bg-red-100 rounded-lg transition">
+                        className="px-2.5 py-1.5 text-xs text-red-400 bg-purple-800 hover:bg-purple-900 rounded-lg transition">
                         <Trash2 size={13} />
                       </button>
                     </div>
