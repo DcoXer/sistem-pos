@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, collection, getDocs, deleteDoc, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { StoreData } from '../types';
 import type { User } from 'firebase/auth';
@@ -42,15 +42,22 @@ export function useStoreData(user: User | null, activeStore: string) {
           passwordRef.current = data.password;
         }
 
-        isLoadedRef.current = true;
-        setStoreData({
+        const loadedData: StoreData = {
           storeType: data.storeType || 'fashion',
           inventory: data.inventory || [],
           restocks: data.restocks || [],
           sales: data.sales || [],
           fnbSales: data.fnbSales || [],
-          expenses: data.expenses || []
-        });
+          expenses: data.expenses || [],
+        };
+
+        // Auto backup saat pertama load (sekali per session)
+        if (!isLoadedRef.current) {
+          autoBackup(loadedData);
+        }
+
+        isLoadedRef.current = true;
+        setStoreData(loadedData);
       } else {
         setDoc(docRef, emptyData);
         setStoreData(emptyData);
@@ -64,6 +71,32 @@ export function useStoreData(user: User | null, activeStore: string) {
 
     return () => unsubscribe();
   }, [user, activeStore]);
+
+  // Auto backup — simpan snapshot ke subcollection backups/, max 7 backup
+  const autoBackup = async (data: StoreData) => {
+    if (!activeStore) return;
+    try {
+      const backupRef = doc(
+        collection(doc(db, 'stores', activeStore), 'backups'),
+        new Date().toISOString().replace(/[:.]/g, '-')
+      );
+      await setDoc(backupRef, {
+        ...data,
+        backedUpAt: new Date().toISOString(),
+      });
+
+      // Hapus backup lama kalau lebih dari 7
+      const backupsRef = collection(doc(db, 'stores', activeStore), 'backups');
+      const q = query(backupsRef, orderBy('backedUpAt', 'asc'));
+      const snap = await getDocs(q);
+      if (snap.size > 7) {
+        const toDelete = snap.docs.slice(0, snap.size - 7);
+        await Promise.all(toDelete.map(d => deleteDoc(d.ref)));
+      }
+    } catch (err) {
+      console.warn('[autoBackup] Gagal backup:', err);
+    }
+  };
 
   const saveToCloud = async (newData: StoreData) => {
     if (!user || !activeStore) return;
