@@ -19,6 +19,8 @@ export function useStoreData(user: User | null, activeStore: string) {
 
   // Simpan password di ref — tidak trigger re-render, persist selama session
   const passwordRef = useRef<string | undefined>(undefined);
+  // Flag bahwa data dari Firestore sudah berhasil di-load minimal sekali
+  const isLoadedRef = useRef<boolean>(false);
 
   useEffect(() => {
     if (!user || !activeStore) {
@@ -28,6 +30,7 @@ export function useStoreData(user: User | null, activeStore: string) {
     }
 
     setIsStoreLoading(true);
+    isLoadedRef.current = false;
     const docRef = doc(db, 'stores', activeStore);
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -39,6 +42,7 @@ export function useStoreData(user: User | null, activeStore: string) {
           passwordRef.current = data.password;
         }
 
+        isLoadedRef.current = true;
         setStoreData({
           storeType: data.storeType || 'fashion',
           inventory: data.inventory || [],
@@ -63,6 +67,11 @@ export function useStoreData(user: User | null, activeStore: string) {
 
   const saveToCloud = async (newData: StoreData) => {
     if (!user || !activeStore) return;
+    // Jangan save kalau data belum di-load dari Firestore — mencegah overwrite dengan data kosong
+    if (!isLoadedRef.current) {
+      console.warn('[saveToCloud] BLOCKED — data belum loaded dari Firestore');
+      return;
+    }
     const docRef = doc(db, 'stores', activeStore);
 
     // Firestore tidak bisa simpan field undefined sama sekali
