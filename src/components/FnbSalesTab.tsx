@@ -253,7 +253,7 @@ export default function FnbSalesTab({
         </div>
 
         {filteredSales.length === 0
-          ? <div className="text-center py-10  text-sm bg-white rounded-xl border border-gray-100">
+          ? <div className="text-center py-10 text-sm bg-transparant rounded-xl border border-gray-100">
               Belum ada transaksi di bulan ini.
             </div>
           : (
