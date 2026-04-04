@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MonthFilterProps {
-  value: string; // format: "YYYY-MM"
+  value: string;
   onChange: (val: string) => void;
 }
 
@@ -10,16 +10,24 @@ const MONTH_NAMES = [
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
 ];
 
+const D = {
+  surface: '#1a1a24',
+  border: '#ffffff0d',
+  accent: '#8b5cf6',
+  text: '#f1f0f5',
+  muted: '#6b7280',
+};
+
 export default function MonthFilter({ value, onChange }: MonthFilterProps) {
   const [year, month] = value.split('-').map(Number);
 
   const prev = () => {
-    const d = new Date(year, month - 2); // month-2 karena month 1-indexed
+    const d = new Date(year, month - 2);
     onChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
 
   const next = () => {
-    const d = new Date(year, month); // month sudah 1-indexed, jadi ini = bulan berikutnya
+    const d = new Date(year, month);
     onChange(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
   };
 
@@ -28,27 +36,34 @@ export default function MonthFilter({ value, onChange }: MonthFilterProps) {
     return now.getFullYear() === year && now.getMonth() + 1 === month;
   };
 
+  const btnStyle = {
+    background: D.surface,
+    border: `1px solid ${D.border}`,
+    color: D.muted,
+    padding: '6px',
+    borderRadius: '8px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+  };
+
   return (
     <div className="flex items-center gap-2">
-      <button
-        onClick={prev}
-        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500"
-      >
-        <ChevronLeft size={16} />
+      <button onClick={prev} style={btnStyle}>
+        <ChevronLeft size={15} />
       </button>
 
-      <div className="flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-200 rounded-lg min-w-[160px] justify-center">
-        <span className="text-sm font-semibold text-gray-700">
+      <div className="px-4 py-1.5 rounded-lg flex items-center justify-center min-w-[148px]"
+        style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+        <span className="text-sm font-medium" style={{ color: D.text }}>
           {MONTH_NAMES[month - 1]} {year}
         </span>
       </div>
 
-      <button
-        onClick={next}
-        disabled={isCurrentMonth()}
-        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-100 transition text-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        <ChevronRight size={16} />
+      <button onClick={next} disabled={isCurrentMonth()}
+        style={{ ...btnStyle, opacity: isCurrentMonth() ? 0.3 : 1, cursor: isCurrentMonth() ? 'not-allowed' : 'pointer' }}>
+        <ChevronRight size={15} />
       </button>
 
       {!isCurrentMonth() && (
@@ -57,7 +72,8 @@ export default function MonthFilter({ value, onChange }: MonthFilterProps) {
             const now = new Date();
             onChange(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`);
           }}
-          className="text-xs text-blue-500 hover:text-blue-700 font-medium px-2 py-1.5 rounded-lg hover:bg-blue-50 transition"
+          className="text-xs font-medium px-2 py-1.5 rounded-lg transition"
+          style={{ color: D.accent, background: `${D.accent}15` }}
         >
           Bulan Ini
         </button>
