@@ -16,6 +16,7 @@ import FnbSalesTab from "./components/FnbSalesTab";
 
 import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem, FnbSaleItem } from "./types";
 import { Toast, useToast } from "./components/Toast";
+import ConfirmDialog, { useConfirm } from "./components/ConfirmDialog";
 
 export default function App() {
   const { user, isInitializing } = useAuth();
@@ -34,6 +35,7 @@ export default function App() {
 
   const metrics = useMetrics(storeData);
   const toast = useToast();
+  const { confirmState, confirm, cancelConfirm } = useConfirm();
 
   // ==============================
   // EXPORT DATA
@@ -347,12 +349,19 @@ export default function App() {
   };
 
   const handleDeleteInventory = (sku: string) => {
-    const updatedInv = storeData.inventory.filter((i) => i.sku !== sku);
-    const newData = { ...storeData, inventory: updatedInv };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Produk berhasil dihapus.'))
-      .catch(() => toast.error('Gagal menghapus produk. Coba lagi.'));
+    const item = storeData.inventory.find(i => i.sku === sku);
+    confirm(
+      'Hapus Produk',
+      `Yakin mau hapus "${item?.name || sku}"? Data tidak bisa dikembalikan.`,
+      () => {
+        const updatedInv = storeData.inventory.filter((i) => i.sku !== sku);
+        const newData = { ...storeData, inventory: updatedInv };
+        setStoreData(newData);
+        saveToCloud(newData)
+          .then(() => toast.success('Produk berhasil dihapus.'))
+          .catch(() => toast.error('Gagal menghapus produk. Coba lagi.'));
+      }
+    );
   };
 
   const handleUpdateInventory = (oldSku: string, item: InventoryItem) => {
@@ -411,12 +420,18 @@ export default function App() {
   };
 
   const handleDeleteSale = (id: string) => {
-    const updatedSales = storeData.sales.filter((s) => s.id !== id);
-    const newData = { ...storeData, sales: updatedSales };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Data penjualan berhasil dihapus.'))
-      .catch(() => toast.error('Gagal menghapus penjualan. Coba lagi.'));
+    confirm(
+      'Hapus Penjualan',
+      'Yakin mau hapus transaksi ini? Data tidak bisa dikembalikan.',
+      () => {
+        const updatedSales = storeData.sales.filter((s) => s.id !== id);
+        const newData = { ...storeData, sales: updatedSales };
+        setStoreData(newData);
+        saveToCloud(newData)
+          .then(() => toast.success('Data penjualan berhasil dihapus.'))
+          .catch(() => toast.error('Gagal menghapus penjualan. Coba lagi.'));
+      }
+    );
   };
 
   const handleAddFnbSale = (sale: Omit<FnbSaleItem, "id">) => {
@@ -430,12 +445,18 @@ export default function App() {
   };
 
   const handleDeleteFnbSale = (id: string) => {
-    const updatedFnbSales = (storeData.fnbSales || []).filter((s) => s.id !== id);
-    const newData = { ...storeData, fnbSales: updatedFnbSales };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Transaksi berhasil dihapus.'))
-      .catch(() => toast.error('Gagal menghapus transaksi. Coba lagi.'));
+    confirm(
+      'Hapus Transaksi',
+      'Yakin mau hapus transaksi ini? Data tidak bisa dikembalikan.',
+      () => {
+        const updatedFnbSales = (storeData.fnbSales || []).filter((s) => s.id !== id);
+        const newData = { ...storeData, fnbSales: updatedFnbSales };
+        setStoreData(newData);
+        saveToCloud(newData)
+          .then(() => toast.success('Transaksi berhasil dihapus.'))
+          .catch(() => toast.error('Gagal menghapus transaksi. Coba lagi.'));
+      }
+    );
   };
 
   const handleUpdateSaleStatus = (id: string, status: SaleStatus, dpAmount?: number) => {
@@ -471,12 +492,18 @@ export default function App() {
   };
 
   const handleDeleteExpense = (id: string) => {
-    const updatedExpenses = storeData.expenses.filter((exp) => exp.id !== id);
-    const newData = { ...storeData, expenses: updatedExpenses };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Pengeluaran berhasil dihapus.'))
-      .catch(() => toast.error('Gagal menghapus pengeluaran. Coba lagi.'));
+    confirm(
+      'Hapus Pengeluaran',
+      'Yakin mau hapus data pengeluaran ini? Data tidak bisa dikembalikan.',
+      () => {
+        const updatedExpenses = storeData.expenses.filter((exp) => exp.id !== id);
+        const newData = { ...storeData, expenses: updatedExpenses };
+        setStoreData(newData);
+        saveToCloud(newData)
+          .then(() => toast.success('Pengeluaran berhasil dihapus.'))
+          .catch(() => toast.error('Gagal menghapus pengeluaran. Coba lagi.'));
+      }
+    );
   };
 
   // ==============================
@@ -599,6 +626,14 @@ export default function App() {
           />
         )}
       </main>
+      <ConfirmDialog
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel={confirmState.confirmLabel}
+        onConfirm={confirmState.onConfirm}
+        onCancel={cancelConfirm}
+      />
       <Toast toasts={toast.toasts} onRemove={toast.remove} />
     </div>
   );
