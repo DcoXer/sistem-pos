@@ -266,7 +266,7 @@ export default function FnbInventoryTab({
                 <div key={item.sku} className="overflow-hidden flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
                   {item.imageUrl
                     ? <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover" />
-                    : <div className="w-full h-36 bg-gray-100 flex items-center justify-center text-gray-300"><ImageOff size={28} /></div>
+                    : <div className="w-full h-36 flex items-center justify-center" style={{ background: D.elevated }}><ImageOff size={28} style={{ color: D.muted }} /></div>
                   }
                   <div className="p-3 flex flex-col flex-1 space-y-2">
                     <div>
