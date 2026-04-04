@@ -117,7 +117,7 @@ export default function AuthScreen({ setActiveStore }: AuthScreenProps) {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl p-6" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
+        <div className="rounded-2xl p-6 text-center" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border)' }}>
 
           {/* STEP 1: Input kode toko */}
           {step === 'input_code' && (
