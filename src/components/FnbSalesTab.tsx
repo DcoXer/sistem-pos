@@ -29,6 +29,7 @@ export default function FnbSalesTab({
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   });
   const [page, setPage] = useState(1);
+  const [filterDate, setFilterDate] = useState('');
   const PAGE_SIZE = 10;
 
   const inventory = storeData.inventory || [];
@@ -76,11 +77,16 @@ export default function FnbSalesTab({
   // Filter transaksi bulan ini
   const filteredSales = useMemo(() => {
     const [fy, fm] = filterMonth.split('-').map(Number);
-    return (storeData.fnbSales || []).filter(s => {
-      const d = new Date(s.date);
-      return d.getFullYear() === fy && d.getMonth() + 1 === fm;
-    });
-  }, [storeData.fnbSales, filterMonth]);
+    return (storeData.fnbSales || [])
+      .filter(s => {
+        const d = new Date(s.date);
+        const inMonth = d.getFullYear() === fy && d.getMonth() + 1 === fm;
+        if (!inMonth) return false;
+        if (filterDate && s.date !== filterDate) return false;
+        return true;
+      })
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [storeData.fnbSales, filterMonth, filterDate]);
 
   const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
   const paginatedSales = filteredSales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -203,11 +209,25 @@ export default function FnbSalesTab({
 
       {/* Riwayat transaksi */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-base">Riwayat Transaksi</h3>
-          <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
-            <span className="text-xs text-gray-400">{filteredSales.length} transaksi · </span>
-            <span className="text-xs font-bold text-green-700">{formatRp(totalOmzet)}</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="bg-green-50 border border-green-100 rounded-lg px-3 py-1.5">
+              <span className="text-xs text-gray-400">{filteredSales.length} transaksi · </span>
+              <span className="text-xs font-bold text-green-700">{formatRp(totalOmzet)}</span>
+            </div>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={e => { setFilterDate(e.target.value); setPage(1); }}
+              className="border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-green-500 outline-none"
+            />
+            {filterDate && (
+              <button onClick={() => { setFilterDate(''); setPage(1); }}
+                className="text-xs text-gray-400 hover:text-gray-600 transition">
+                Reset
+              </button>
+            )}
           </div>
         </div>
 
