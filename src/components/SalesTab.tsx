@@ -138,16 +138,16 @@ function SaleCard({ sale, item, onDelete, onEditStatus }: {
       <div className="p-4 space-y-2 flex-1 flex flex-col">
         <div>
           <div className="flex items-start justify-between gap-1">
-            <h3 className="font-bold text-sm text-gray-800 leading-tight">
+            <h3 className="font-bold text-sm leading-tight">
               {item ? item.name : <span className="text-red-400 line-through">{sale.sku}</span>}
             </h3>
-            <span className="bg-blue-100 text-[var(--accent)] text-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">{sale.size}</span>
+            <span className="bg-transparant text-[var(--accent)] text-700 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0">{sale.size}</span>
           </div>
-          <p className="text-xs  font-mono">{sale.invoice || '-'} · {sale.date}</p>
+          <p className="text-xs font-mono">{sale.invoice || '-'} · {sale.date}</p>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className="text-sm font-bold text-gray-700">{formatRp(total)}</span>
+          <span className="text-sm font-bold text-green-800">{formatRp(total)}</span>
           <span className="text-xs ">×{sale.qty} pcs</span>
         </div>
 
@@ -395,7 +395,7 @@ export default function SalesTab({
           <p className="text-xs ">Sudah Lunas</p>
           <p className="text-sm font-bold mt-0.5" style={{ color: D.success }}>{formatRp(totalLunas)}</p>
         </div>
-        <div className="bg-blue-50 border border-b border-[var(--border)]lue-100 rounded-xl px-4 py-3">
+        <div className="border border-b border-[var(--border)]lue-100 rounded-xl px-4 py-3">
           <p className="text-xs ">DP Masuk</p>
           <p className="text-sm font-bold text-[var(--accent)] text-700 mt-0.5">{formatRp(totalDP)}</p>
         </div>
