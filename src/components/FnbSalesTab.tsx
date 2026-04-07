@@ -4,7 +4,6 @@ import type { StoreData, FnbSaleItem } from '../types';
 import MonthFilter from './MonthFilter';
 import Pagination from './Pagination';
 
-// Dark theme tokens
 const D = {
   surface: '#13131a', elevated: '#1a1a24', border: '#ffffff0d',
   accent: '#8b5cf6', accentDim: '#8b5cf615',
@@ -12,11 +11,7 @@ const D = {
   success: '#10b981', successDim: '#10b98115',
   danger: '#ef4444', dangerDim: '#ef444415',
   warning: '#f59e0b', warningDim: '#f59e0b15',
-  input: '#1a1a24',
 };
-
-
-
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
@@ -46,7 +41,16 @@ export default function FnbSalesTab({
   const [filterDate, setFilterDate] = useState('');
   const PAGE_SIZE = 10;
 
-  const inventory = storeData.inventory || [];
+  // Deduplikasi inventory by SKU
+  const inventory = useMemo(() =>
+    Object.values(
+      (storeData.inventory || []).reduce((acc, item) => {
+        acc[item.sku] = item;
+        return acc;
+      }, {} as Record<string, typeof storeData.inventory[0]>)
+    ),
+    [storeData.inventory]
+  );
 
   const addToCart = (sku: string) => {
     setCart(prev => {
@@ -65,7 +69,6 @@ export default function FnbSalesTab({
 
   const removeFromCart = (sku: string) => setCart(prev => prev.filter(c => c.sku !== sku));
 
-  // Lookup harga dari inventory langsung (stockMap FnB tidak track harga per item)
   const invMap = useMemo(() =>
     Object.fromEntries(inventory.map(i => [i.sku, i])),
     [inventory]
@@ -88,7 +91,6 @@ export default function FnbSalesTab({
     setCart([]);
   };
 
-  // Filter transaksi bulan ini
   const filteredSales = useMemo(() => {
     const [fy, fm] = filterMonth.split('-').map(Number);
     return (storeData.fnbSales || [])
@@ -104,12 +106,12 @@ export default function FnbSalesTab({
 
   const totalPages = Math.ceil(filteredSales.length / PAGE_SIZE);
   const paginatedSales = filteredSales.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
   const totalOmzet = filteredSales.reduce((sum, s) => sum + s.total, 0);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+    <div className="space-y-6 animate-fade-in" style={{ color: D.text }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3"
+        style={{ borderBottom: `1px solid ${D.border}` }}>
         <h2 className="text-xl font-semibold" style={{ color: D.text }}>Kasir</h2>
         <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
       </div>
@@ -120,9 +122,10 @@ export default function FnbSalesTab({
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold" style={{ color: D.text }}>Pilih Produk</p>
             <div className="space-y-1">
-              <label className="text-xs ">Tgl Transaksi</label>
+              <label className="text-xs" style={{ color: D.muted }}>Tgl Transaksi</label>
               <input type="date" value={date} onChange={e => setDate(e.target.value)}
-    className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
+                className="rounded-lg px-3 py-1.5 text-sm outline-none"
+                style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -138,22 +141,25 @@ export default function FnbSalesTab({
                 >
                   {invItem.imageUrl
                     ? <img src={invItem.imageUrl} alt={invItem.name} className="w-full h-28 object-cover" />
-                    : <div className="w-full h-28 bg-gray-100 flex items-center justify-center text-gray-300"><ImageOff size={24} /></div>
+                    : <div className="w-full h-28 flex items-center justify-center" style={{ background: D.elevated }}>
+                        <ImageOff size={24} style={{ color: D.muted }} />
+                      </div>
                   }
                   {inCart && (
-                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                    <div className="absolute top-2 right-2 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center"
+                      style={{ background: D.success }}>
                       {inCart.qty}
                     </div>
                   )}
                   <div className="p-2.5">
-                    <p className="text-sm font-bold leading-tight truncate" style={{ color: '#f1f0f5' }}>{invItem.name}</p>
+                    <p className="text-sm font-bold leading-tight truncate" style={{ color: D.text }}>{invItem.name}</p>
                     <p className="text-xs font-semibold mt-0.5" style={{ color: D.success }}>{formatRp(invItem.price)}</p>
                   </div>
                 </button>
               );
             })}
             {inventory.length === 0 && (
-              <div className="col-span-3 text-center py-12  text-sm">
+              <div className="col-span-3 text-center py-12 text-sm" style={{ color: D.muted }}>
                 Belum ada produk. Tambah di tab Produk dulu.
               </div>
             )}
@@ -161,12 +167,15 @@ export default function FnbSalesTab({
         </div>
 
         {/* Keranjang */}
-        <div className="flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
-          <div className="px-5 py-4 border-b border-[var(--border)] flex items-center gap-2">
-            <ShoppingCart size={18} className="" />
-            <h3 className="font-bold text-base">Keranjang</h3>
+        <div className="flex flex-col rounded-xl overflow-hidden"
+          style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+          <div className="px-5 py-4 flex items-center gap-2"
+            style={{ borderBottom: `1px solid ${D.border}` }}>
+            <ShoppingCart size={18} style={{ color: D.muted }} />
+            <h3 className="font-bold text-base" style={{ color: D.text }}>Keranjang</h3>
             {cartQty > 0 && (
-              <span className="ml-auto bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto text-xs font-bold px-2 py-0.5 rounded-full"
+                style={{ background: D.successDim, color: D.success }}>
                 {cartQty} item
               </span>
             )}
@@ -174,14 +183,17 @@ export default function FnbSalesTab({
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px]">
             {cart.length === 0
-              ? <p className="text-sm  text-center py-8">Ketuk produk untuk menambahkan</p>
+              ? <p className="text-sm text-center py-8" style={{ color: D.muted }}>Ketuk produk untuk menambahkan</p>
               : cart.map(c => {
                   const item = invMap[c.sku];
                   return (
                     <div key={c.sku} className="flex items-center gap-2">
                       {item?.imageUrl
                         ? <img src={item.imageUrl} alt={item.name} className="w-10 h-10 object-cover rounded-lg shrink-0" />
-                        : <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center" style={{ background: D.elevated }}><ImageOff size={14} style={{ color: D.muted }} /></div>
+                        : <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center"
+                            style={{ background: D.elevated }}>
+                            <ImageOff size={14} style={{ color: D.muted }} />
+                          </div>
                       }
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate" style={{ color: D.text }}>{item?.name || c.sku}</p>
@@ -212,7 +224,7 @@ export default function FnbSalesTab({
           </div>
 
           {cart.length > 0 && (
-            <div className="p-4 border-t border-[var(--border)] space-y-3">
+            <div className="p-4 space-y-3" style={{ borderTop: `1px solid ${D.border}` }}>
               <div className="flex justify-between text-base">
                 <span className="font-bold" style={{ color: D.text }}>Total</span>
                 <span className="font-bold" style={{ color: D.success }}>{formatRp(cartTotal)}</span>
@@ -232,20 +244,17 @@ export default function FnbSalesTab({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-bold text-base" style={{ color: D.text }}>Riwayat Transaksi</h3>
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="bg-transparant border border-green-100 rounded-lg px-3 py-1.5">
-              <span className="text-xs ">{filteredSales.length} transaksi · </span>
-              <span className="text-xs font-bold text-green-700">{formatRp(totalOmzet)}</span>
+            <div className="rounded-lg px-3 py-1.5" style={{ background: D.successDim, border: `1px solid ${D.success}20` }}>
+              <span className="text-xs" style={{ color: D.muted }}>{filteredSales.length} transaksi · </span>
+              <span className="text-xs font-bold" style={{ color: D.success }}>{formatRp(totalOmzet)}</span>
             </div>
-            <input
-              type="date"
-              placeholder="Filter PerTgl..."
-              value={filterDate}
+            <input type="date" value={filterDate}
               onChange={e => { setFilterDate(e.target.value); setPage(1); }}
-  className="rounded-lg px-3 py-1.5 text-sm outline-none" style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }}
-            />
+              className="rounded-lg px-3 py-1.5 text-sm outline-none"
+              style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
             {filterDate && (
               <button onClick={() => { setFilterDate(''); setPage(1); }}
-                className="text-xs  hover:text-gray-600 transition">
+                className="text-xs transition" style={{ color: D.muted }}>
                 Reset
               </button>
             )}
@@ -253,21 +262,24 @@ export default function FnbSalesTab({
         </div>
 
         {filteredSales.length === 0
-          ? <div className="text-center py-10 text-sm bg-transparant rounded-xl border border-gray-100">
+          ? <div className="text-center py-10 text-sm rounded-xl"
+              style={{ color: D.muted, background: D.surface, border: `1px solid ${D.border}` }}>
               Belum ada transaksi di bulan ini.
             </div>
           : (
             <>
               <div className="space-y-2">
                 {paginatedSales.map(sale => (
-                  <div key={sale.id} className="rounded-xl px-4 py-3 flex items-start justify-between gap-3" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+                  <div key={sale.id} className="rounded-xl px-4 py-3 flex items-start justify-between gap-3"
+                    style={{ background: D.surface, border: `1px solid ${D.border}` }}>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold" style={{ color: D.text }}>{sale.date}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {sale.items.map(si => {
                           const item = metrics.stockMap[si.sku];
                           return (
-                            <span key={si.sku} className="text-xs px-2 py-0.5 rounded" style={{ background: D.elevated, color: D.muted }}>
+                            <span key={si.sku} className="text-xs px-2 py-0.5 rounded"
+                              style={{ background: D.elevated, color: D.muted }}>
                               {item?.name || si.sku} ×{si.qty}
                             </span>
                           );
@@ -285,7 +297,7 @@ export default function FnbSalesTab({
                 ))}
               </div>
               <div className="flex items-center justify-between pt-1">
-                <p className="text-xs ">{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
+                <p className="text-xs" style={{ color: D.muted }}>{filteredSales.length} transaksi · halaman {page} dari {totalPages}</p>
                 <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
               </div>
             </>
