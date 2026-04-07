@@ -319,8 +319,8 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
       {/* Info */}
       <div className="p-4 flex flex-col flex-1 space-y-3">
         <div>
-          <p className="text-xs  font-mono">{item.sku}</p>
-          <h3 className="font-bold text-gray-800 leading-tight">{item.name}</h3>
+          <p className="text-xs font-mono">{item.sku}</p>
+          <h3 className="font-bold leading-tight">{item.name}</h3>
           <p className="text-sm text-green-600 font-semibold mt-0.5">{formatRp(item.price)}</p>
           <p className="text-xs ">Modal: {formatRp(item.hpp)}</p>
         </div>
@@ -341,15 +341,15 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
                 <p className="text-[9px] font-bold ">{size}</p>
                 <p className={`text-sm font-bold ${
                   !hasStock ? 'text-white' :
-                  remaining <= 0 ? 'text-red-200' :
-                  remaining <= 3 ? 'text-yellow-600' : 'text-green-600'
+                  remaining <= 0 ? 'text-red-100' :
+                  remaining <= 3 ? 'text-yellow-100' : 'text-green-100'
                 }`}>{hasStock ? remaining : '-'}</p>
               </div>
             );
           })}
         </div>
 
-        <p className="text-xs ">Total sisa: <span className="font-semibold text-gray-600">{item.current} pcs</span></p>
+        <p className="text-xs ">Total sisa: <span className="font-semibold text-gray-100">{item.current} pcs</span></p>
 
         {/* Actions */}
         <div className="flex gap-2 pt-1 mt-auto">
