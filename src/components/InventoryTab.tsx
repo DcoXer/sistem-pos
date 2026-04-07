@@ -118,7 +118,7 @@ function EditModal({ item, onClose, onSave, onUploadError }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-transparant rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
           <h3 className="font-bold text-lg">Edit Produk</h3>
           <button onClick={onClose} className=" hover:text-gray-600"><X size={20} /></button>
@@ -206,7 +206,7 @@ function RestockModal({ item, restockHistory, onClose, onAddRestock, onDeleteRes
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+      <div className="bg-transparant rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-center gap-3">
             <ProductImage url={item.imageUrl} name={item.name} size="sm" />
@@ -269,7 +269,7 @@ function RestockModal({ item, restockHistory, onClose, onAddRestock, onDeleteRes
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {r.sizes.filter(s => s.stock > 0).map(s => (
-                        <span key={s.size} className="text-xs bg-white border border-gray-200 rounded px-2 py-0.5 font-medium">
+                        <span key={s.size} className="text-xs bg-transparant border border-gray-200 rounded px-2 py-0.5 font-medium">
                           {s.size}: {s.stock}
                         </span>
                       ))}
@@ -334,14 +334,14 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
             const hasStock = restocked > 0;
             return (
               <div key={size} className={`rounded-lg p-1.5 text-center ${
-                !hasStock ? 'bg-gray-50' :
-                remaining <= 0 ? 'bg-red-50' :
-                remaining <= 3 ? 'bg-yellow-50' : 'bg-green-50'
+                !hasStock ? 'bg-transparant' :
+                remaining <= 0 ? 'bg-red-800' :
+                remaining <= 3 ? 'bg-yellow-800' : 'bg-green-800'
               }`}>
                 <p className="text-[9px] font-bold ">{size}</p>
                 <p className={`text-sm font-bold ${
-                  !hasStock ? 'text-gray-300' :
-                  remaining <= 0 ? 'text-red-500' :
+                  !hasStock ? 'text-white' :
+                  remaining <= 0 ? 'text-red-200' :
                   remaining <= 3 ? 'text-yellow-600' : 'text-green-600'
                 }`}>{hasStock ? remaining : '-'}</p>
               </div>
@@ -354,15 +354,15 @@ function ProductCard({ item, onEdit, onDelete, onRestock }: {
         {/* Actions */}
         <div className="flex gap-2 pt-1 mt-auto">
           <button onClick={onRestock}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-lg transition">
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-green-600 bg-transparant rounded-lg transition">
             <PackagePlus size={13} /> Restock
           </button>
           <button onClick={onEdit}
-            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[var(--accent)] text-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition">
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[var(--accent)] text-600 bg-transparant rounded-lg transition">
             <Pencil size={13} /> Edit
           </button>
           <button onClick={onDelete}
-            className="px-2.5 py-1.5 text-xs text-red-400 bg-red-50 hover:bg-red-100 rounded-lg transition">
+            className="px-2.5 py-1.5 text-xs text-red-400 bg-transparant rounded-lg transition">
             <Trash2 size={13} />
           </button>
         </div>
