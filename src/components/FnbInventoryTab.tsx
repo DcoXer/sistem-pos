@@ -4,7 +4,6 @@ import type { InventoryItem } from '../types';
 import Pagination from './Pagination';
 import MonthFilter from './MonthFilter';
 
-// Dark theme tokens
 const D = {
   surface: '#13131a', elevated: '#1a1a24', border: '#ffffff0d',
   accent: '#8b5cf6', accentDim: '#8b5cf615',
@@ -12,17 +11,28 @@ const D = {
   success: '#10b981', successDim: '#10b98115',
   danger: '#ef4444', dangerDim: '#ef444415',
   warning: '#f59e0b', warningDim: '#f59e0b15',
-  input: '#1a1a24',
 };
 
-const inputStyle = (extra?: object) => ({
+const inp = {
   background: '#1a1a24',
   border: '1px solid #ffffff12',
   color: '#f1f0f5',
   borderRadius: 10,
-  ...extra,
-});
+  padding: '8px 12px',
+  fontSize: 14,
+  outline: 'none',
+  width: '100%',
+};
 
+const lbl = {
+  fontSize: 11,
+  fontWeight: 600,
+  color: '#6b7280',
+  textTransform: 'uppercase' as const,
+  letterSpacing: 1,
+  display: 'block',
+  marginBottom: 4,
+};
 
 const formatRp = (num: number) => new Intl.NumberFormat('id-ID', {
   style: 'currency', currency: 'IDR', minimumFractionDigits: 0
@@ -82,56 +92,45 @@ function EditModal({ item, onClose, onSave, onUploadError }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="rounded-2xl w-full max-w-md shadow-xl"
-           style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-          <h3 className="font-bold text-lg">Edit Produk</h3>
-          <button onClick={onClose} className=" hover:text-gray-600"><X size={20} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: '#00000080' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${D.border}` }}>
+          <h3 className="font-bold text-base" style={{ color: D.text }}>Edit Produk</h3>
+          <button onClick={onClose} style={{ color: D.muted }}><X size={20} /></button>
         </div>
         <form onSubmit={handleSave} className="p-6 space-y-4">
           <div className="flex items-center gap-4">
             {imagePreview
-              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl border" />
-              : <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-gray-300"><ImageOff size={24} /></div>
+              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl shrink-0" style={{ border: `1px solid ${D.border}` }} />
+              : <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0" style={{ background: D.elevated }}>
+                  <ImageOff size={24} style={{ color: D.muted }} />
+                </div>
             }
             <div className="space-y-1">
-              <label className="flex items-center gap-2 px-3 py-2 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-b border-[var(--border)]lue-400 transition text-sm ">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm" style={{ border: '1px dashed #ffffff20', color: D.muted }}>
                 <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto'}
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </label>
-              <p className="text-[11px] ">Format: JPG, PNG · Maks. 2 MB</p>
+              <p className="text-[11px]" style={{ color: '#4b5563' }}>Format: JPG, PNG · Maks. 2 MB</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">SKU</label>
-              <input required value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })}
-                className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">Nama Produk</label>
-              <input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label style={lbl}>SKU</label><input required value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} style={inp} /></div>
+            <div><label style={lbl}>Nama Produk</label><input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inp} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">HPP (Modal)</label>
-              <input required type="number" value={form.hpp} onChange={e => setForm({ ...form, hpp: e.target.value })}
-                className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">Harga Jual</label>
-              <input required type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })}
-                className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label style={lbl}>HPP (Modal)</label><input required type="number" value={form.hpp} onChange={e => setForm({ ...form, hpp: e.target.value })} style={inp} /></div>
+            <div><label style={lbl}>Harga Jual</label><input required type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={inp} /></div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm rounded-lg border border-gray-200 ">Batal</button>
+              className="px-4 py-2 text-sm rounded-lg font-medium"
+              style={{ background: D.elevated, color: D.muted, border: `1px solid ${D.border}` }}>
+              Batal
+            </button>
             <button type="submit" disabled={uploading}
-              className="px-5 py-2 text-sm bg-[var(--accent)] text-white rounded-lg hover:bg-[var(--accent-dim)] transition flex items-center gap-2 font-medium disabled:opacity-60">
+              className="px-5 py-2 text-sm rounded-lg font-medium flex items-center gap-2 disabled:opacity-60"
+              style={{ background: D.accent, color: '#fff' }}>
               {uploading ? 'Mengupload...' : <><Check size={15} /> Simpan</>}
             </button>
           </div>
@@ -165,6 +164,11 @@ export default function FnbInventoryTab({
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const skuExists = Object.keys(metrics.stockMap).includes(newInv.sku);
+    if (skuExists) {
+      onUploadError(`SKU "${newInv.sku}" sudah dipakai produk lain. Gunakan SKU yang berbeda.`);
+      return;
+    }
     setUploading(true);
     let imageUrl: string | null = null;
     if (imageFile) {
@@ -190,64 +194,61 @@ export default function FnbInventoryTab({
   const paginatedItems = filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+    <div className="space-y-6 animate-fade-in" style={{ color: D.text }}>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4"
+        style={{ borderBottom: `1px solid ${D.border}` }}>
         <h2 className="text-xl font-semibold" style={{ color: D.text }}>Database Produk</h2>
         <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
       </div>
 
+      {/* Search + Tambah */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 " />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: D.muted }} />
           <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
             placeholder="Cari SKU atau nama produk..."
-            className="w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:ring-2 focus:ring-[var(--accent)] outline-none" />
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl outline-none"
+            style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
         </div>
         <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 bg-[var(--accent)] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[var(--accent-dim)] transition shrink-0">
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition shrink-0"
+          style={{ background: D.accent, color: '#fff' }}>
           <Plus size={16} /> Tambah Produk
         </button>
       </div>
 
+      {/* Form tambah */}
       {showForm && (
-        <form onSubmit={handleAdd} className="p-5space-y-4" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
-          <p className="text-xs font-semibold  uppercase">Daftarkan Produk Baru</p>
+        <form onSubmit={handleAdd} className="p-5 space-y-4 rounded-xl"
+          style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+          <p className="text-xs font-semibold uppercase" style={{ color: D.muted }}>Daftarkan Produk Baru</p>
           <div className="flex items-center gap-4">
             {imagePreview
-              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl border" />
-              : <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center text-gray-300"><ImageOff size={24} /></div>
+              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl shrink-0" style={{ border: `1px solid ${D.border}` }} />
+              : <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0" style={{ background: D.elevated }}>
+                  <ImageOff size={24} style={{ color: D.muted }} />
+                </div>
             }
             <div className="space-y-1">
-              <label className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 rounded-xl cursor-pointer hover:border-b border-[var(--border)]lue-400 transition text-sm ">
+              <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer text-sm" style={{ border: '1px dashed #ffffff20', color: D.muted }}>
                 <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto'}
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </label>
-              <p className="text-[11px] ">Format: JPG, PNG · Maks. 2 MB</p>
+              <p className="text-[11px]" style={{ color: '#4b5563' }}>Format: JPG, PNG · Maks. 2 MB</p>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">SKU</label>
-              <input required value={newInv.sku} onChange={e => setNewInv({ ...newInv, sku: e.target.value })}
-                placeholder="MKN-001" className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">Nama Produk</label>
-              <input required value={newInv.name} onChange={e => setNewInv({ ...newInv, name: e.target.value })}
-                placeholder="Nasi Goreng" className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">HPP (Modal)</label>
-              <input required type="number" value={newInv.hpp} onChange={e => setNewInv({ ...newInv, hpp: e.target.value })}
-                placeholder="8000" className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold  uppercase">Harga Jual</label>
+            <div><label style={lbl}>SKU</label><input required value={newInv.sku} onChange={e => setNewInv({ ...newInv, sku: e.target.value })} placeholder="MKN-001" style={inp} /></div>
+            <div><label style={lbl}>Nama Produk</label><input required value={newInv.name} onChange={e => setNewInv({ ...newInv, name: e.target.value })} placeholder="Nasi Goreng" style={inp} /></div>
+            <div><label style={lbl}>HPP (Modal)</label><input required type="number" value={newInv.hpp} onChange={e => setNewInv({ ...newInv, hpp: e.target.value })} placeholder="8000" style={inp} /></div>
+            <div>
+              <label style={lbl}>Harga Jual</label>
               <div className="flex gap-2">
-                <input required type="number" value={newInv.price} onChange={e => setNewInv({ ...newInv, price: e.target.value })}
-                  placeholder="15000" className="w-full text-sm" style={{ ...inputStyle(), padding: "8px 12px" }} />
+                <input required type="number" value={newInv.price} onChange={e => setNewInv({ ...newInv, price: e.target.value })} placeholder="15000" style={inp} />
                 <button type="submit" disabled={uploading}
-                  className="bg-[var(--accent)] text-white px-3 py-2 rounded-lg hover:bg-[var(--accent-dim)] transition disabled:opacity-60">
+                  className="p-2 rounded-lg transition disabled:opacity-60 shrink-0"
+                  style={{ background: D.accent, color: '#fff' }}>
                   {uploading ? '...' : <Plus size={20} />}
                 </button>
               </div>
@@ -256,33 +257,39 @@ export default function FnbInventoryTab({
         </form>
       )}
 
+      {/* Card grid */}
       {filteredItems.length === 0
-        ? <div className="text-center py-16 ">
+        ? <div className="text-center py-16 text-sm" style={{ color: D.muted }}>
             {search ? `Tidak ada produk dengan kata kunci "${search}"` : 'Belum ada produk di database.'}
           </div>
         : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {paginatedItems.map((item: any) => (
-                <div key={item.sku} className="overflow-hidden flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 12 }}>
+                <div key={item.sku} className="rounded-xl overflow-hidden flex flex-col"
+                  style={{ background: D.surface, border: `1px solid ${D.border}` }}>
                   {item.imageUrl
                     ? <img src={item.imageUrl} alt={item.name} className="w-full h-36 object-cover" />
-                    : <div className="w-full h-36 flex items-center justify-center" style={{ background: D.elevated }}><ImageOff size={28} style={{ color: D.muted }} /></div>
+                    : <div className="w-full h-36 flex items-center justify-center" style={{ background: D.elevated }}>
+                        <ImageOff size={28} style={{ color: D.muted }} />
+                      </div>
                   }
                   <div className="p-3 flex flex-col flex-1 space-y-2">
                     <div>
-                      <p className="text-[10px]  font-mono">{item.sku}</p>
-                      <p className="font-bold text-sm text-gray-200 leading-tight">{item.name}</p>
-                      <p className="text-sm text-green-600 font-semibold mt-0.5">{formatRp(item.price)}</p>
-                      <p className="text-xs ">Modal: {formatRp(item.hpp)}</p>
+                      <p className="text-[10px] font-mono" style={{ color: D.muted }}>{item.sku}</p>
+                      <p className="font-bold text-sm leading-tight" style={{ color: D.text }}>{item.name}</p>
+                      <p className="text-sm font-semibold mt-0.5" style={{ color: D.success }}>{formatRp(item.price)}</p>
+                      <p className="text-xs" style={{ color: D.muted }}>Modal: {formatRp(item.hpp)}</p>
                     </div>
                     <div className="flex gap-2 mt-auto">
                       <button onClick={() => setEditingItem(item)}
-                        className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[var(--accent)] text-600 bg-transparant rounded-lg transition">
+                        className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium rounded-lg transition"
+                        style={{ background: '#8b5cf620', color: D.accent, border: '1px solid #8b5cf630' }}>
                         <Pencil size={12} /> Edit
                       </button>
                       <button onClick={() => onDeleteInventory(item.sku)}
-                        className="px-2.5 py-1.5 text-xs text-red-400 bg-transparant rounded-lg transition">
+                        className="px-2.5 py-1.5 text-xs rounded-lg transition"
+                        style={{ background: '#ef444420', color: D.danger, border: '1px solid #ef444430' }}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -291,7 +298,7 @@ export default function FnbInventoryTab({
               ))}
             </div>
             <div className="flex items-center justify-between pt-2">
-              <p className="text-xs ">{filteredItems.length} produk · halaman {page} dari {totalPages}</p>
+              <p className="text-xs" style={{ color: D.muted }}>{filteredItems.length} produk · halaman {page} dari {totalPages}</p>
               <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
             </div>
           </>
