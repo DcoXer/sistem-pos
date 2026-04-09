@@ -1,604 +1,444 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "./hooks/useAuth";
-import { useStoreData } from "./hooks/useStoreData";
-import { useMetrics } from "./hooks/useMetrics";
-import * as XLSX from "xlsx";
-import AuthScreen from "./components/AuthScreen";
-import Sidebar from "./components/Sidebar";
-import DashboardTab from "./components/Dashboard";
-import InventoryTab from "./components/InventoryTab";
-import SalesTab from "./components/SalesTab";
-import ExpensesTab from "./components/ExpensesTab";
-import ClosingTab from "./components/ClosingTab";
-import FnbInventoryTab from "./components/FnbInventoryTab";
-import FnbSalesTab from "./components/FnbSalesTab";
+import React, { useState, useMemo } from "react";
+import { Plus, Trash2, Pencil, X, Check, PackagePlus, History, Upload, Search, ImageOff } from "lucide-react";
+import type { InventoryItem, RestockItem } from "../types";
+import { SIZES } from "../types";
+import MonthFilter from "./MonthFilter";
+import Pagination from "./Pagination";
 
-import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem, FnbSaleItem } from "./types";
-import { Toast, useToast } from "./components/Toast";
-import ConfirmDialog, { useConfirm } from "./components/ConfirmDialog";
+const D = {
+  surface: '#13131a', elevated: '#1a1a24', border: '#ffffff0d',
+  accent: '#8b5cf6', accentDim: '#8b5cf615',
+  text: '#f1f0f5', muted: '#6b7280',
+  success: '#10b981', successDim: '#10b98115',
+  danger: '#ef4444', dangerDim: '#ef444415',
+  warning: '#f59e0b', warningDim: '#f59e0b15',
+};
 
-export default function App() {
-  const { user, isInitializing } = useAuth();
+const inp = {
+  background: '#1a1a24', border: '1px solid #ffffff12',
+  color: '#f1f0f5', borderRadius: 10, padding: '8px 12px',
+  fontSize: 14, outline: 'none', width: '100%',
+};
 
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [activeStore, setActiveStore] = useState("");
-  const [filterMonth, setFilterMonth] = useState(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  });
+const lbl = {
+  fontSize: 11, fontWeight: 600, color: '#6b7280',
+  textTransform: 'uppercase' as const, letterSpacing: 1,
+  display: 'block', marginBottom: 4,
+};
 
-  const { storeData, setStoreData, saveToCloud, isStoreLoading } = useStoreData(user, activeStore);
-  const metrics = useMetrics(storeData);
-  const toast = useToast();
-  const { confirmState, confirm, cancelConfirm } = useConfirm();
+const formatRp = (num: number) =>
+  new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(num);
 
-  // ==============================
-  // EXPORT DATA
-  // ==============================
+async function uploadProductImage(file: File, sku: string): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'POS-System');
+  formData.append('public_id', `products/${sku}-${Date.now()}`);
+  const res = await fetch('https://api.cloudinary.com/v1_1/dtfyfx9zr/image/upload', { method: 'POST', body: formData });
+  if (!res.ok) throw new Error('Upload gagal');
+  return (await res.json()).secure_url;
+}
 
-  const handleExportData = () => {
-    try {
-      const [fy, fm] = filterMonth.split('-').map(Number);
-      const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
-        'Juli','Agustus','September','Oktober','November','Desember'];
-      const bulanLabel = `${MONTH_NAMES[fm - 1]} ${fy}`;
+interface InventoryTabProps {
+  metrics: any;
+  storeData: any;
+  filterMonth: string;
+  onFilterMonthChange: (val: string) => void;
+  onAddInventory: (item: InventoryItem) => void;
+  onDeleteInventory: (sku: string) => void;
+  onUpdateInventory: (oldSku: string, item: InventoryItem) => void;
+  onAddRestock: (restock: Omit<RestockItem, "id">) => void;
+  onDeleteRestock: (id: string) => void;
+  onUploadError: (msg: string) => void;
+}
 
-      const rp = (num: number) =>
-        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+function ProductImage({ url, name, size = 'md' }: { url?: string | null; name: string; size?: 'sm' | 'md' }) {
+  const sz = size === 'sm' ? 'w-10 h-10' : 'w-full h-36';
+  if (!url) return (
+    <div className={`${sz} rounded-lg flex items-center justify-center`} style={{ background: D.elevated }}>
+      <ImageOff size={size === 'sm' ? 16 : 28} style={{ color: D.muted }} />
+    </div>
+  );
+  return <img src={url} alt={name} className={`${sz} object-cover rounded-lg`} />;
+}
 
-      const fmtDate = (d: string) => {
-        const dt = new Date(d);
-        return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
-      };
+function EditModal({ item, onClose, onSave, onUploadError }: {
+  item: InventoryItem; onClose: () => void;
+  onSave: (oldSku: string, updated: InventoryItem) => void;
+  onUploadError: (msg: string) => void;
+}) {
+  const [form, setForm] = useState({ sku: item.sku, name: item.name, hpp: String(item.hpp), price: String(item.price) });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | undefined>(item.imageUrl ?? undefined);
+  const [uploading, setUploading] = useState(false);
 
-      const STATUS_LABEL: Record<string, string> = {
-        pending: 'Pending (PO)', dp: 'DP', selesai: 'Selesai',
-      };
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { onUploadError('Ukuran foto terlalu besar. Maksimal 2 MB.'); e.target.value = ''; return; }
+    setImageFile(file); setImagePreview(URL.createObjectURL(file));
+  };
 
-      const inFilterMonth = (dateStr: string) => {
-        const d = new Date(dateStr);
-        return d.getFullYear() === fy && d.getMonth() + 1 === fm;
-      };
-
-      const isFnb = storeData.storeType === 'fnb';
-      const salesThisMonth = storeData.sales.filter((s) => inFilterMonth(s.date));
-      const fnbSalesThisMonth = (storeData.fnbSales || []).filter((s) => inFilterMonth(s.date));
-      const expensesThisMonth = storeData.expenses.filter((e) => inFilterMonth(e.date));
-
-      const salesSheet = isFnb
-        ? [
-            ...fnbSalesThisMonth.flatMap((s) =>
-              s.items.map((si) => {
-                const invItem = storeData.inventory.find((i) => i.sku === si.sku);
-                return {
-                  Tanggal: fmtDate(s.date),
-                  'Nama Produk': invItem?.name || si.sku,
-                  SKU: si.sku,
-                  Qty: si.qty,
-                  'Harga Satuan': rp(invItem?.price || 0),
-                  'Subtotal': rp((invItem?.price || 0) * si.qty),
-                };
-              })
-            ),
-            {},
-            {
-              Tanggal: 'TOTAL', 'Nama Produk': '', SKU: '',
-              Qty: fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => sum + si.qty, 0),
-              'Harga Satuan': '',
-              'Subtotal': rp(fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)),
-            },
-          ]
-        : [
-            ...salesThisMonth.map((s) => {
-              const invItem = storeData.inventory.find((i) => i.sku === s.sku);
-              const total = invItem ? invItem.price * s.qty : 0;
-              const status = s.status || 'selesai';
-              const dp = status === 'dp' ? (s.dpAmount || 0) : status === 'selesai' ? total : 0;
-              const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
-              return {
-                Tanggal: fmtDate(s.date),
-                'No. Invoice': s.invoice || '-',
-                'Nama Produk': invItem?.name || s.sku,
-                SKU: s.sku, Ukuran: s.size || '-', Qty: s.qty,
-                'Harga Satuan': rp(invItem?.price || 0),
-                'Total Harga': rp(total),
-                Status: STATUS_LABEL[status] || status,
-                'DP Masuk': dp > 0 ? rp(dp) : '-',
-                'Sisa Tagihan': sisa > 0 ? rp(sisa) : '-',
-              };
-            }),
-            {},
-            {
-              Tanggal: 'TOTAL', 'No. Invoice': '', 'Nama Produk': '', SKU: '', Ukuran: '',
-              Qty: salesThisMonth.reduce((s, x) => s + x.qty, 0),
-              'Harga Satuan': '',
-              'Total Harga': rp(salesThisMonth.reduce((sum, s) => {
-                const inv = storeData.inventory.find(i => i.sku === s.sku);
-                return sum + (inv ? inv.price * s.qty : 0);
-              }, 0)),
-              Status: '',
-              'DP Masuk': rp(salesThisMonth.filter(s => s.status === 'dp').reduce((sum, s) => sum + (s.dpAmount || 0), 0)),
-              'Sisa Tagihan': '',
-            },
-          ];
-
-      const inventorySheet = storeData.inventory.flatMap((i) => {
-        const stockData = metrics.stockMap[i.sku];
-        const restockedBySize = stockData?.restockedBySize || {};
-        const soldBySize = stockData?.soldBySize || {};
-        const sizes = Object.keys(restockedBySize);
-        if (sizes.length === 0) {
-          return [{ SKU: i.sku, 'Nama Produk': i.name, Ukuran: '-', 'HPP (Modal)': rp(i.hpp), 'Harga Jual': rp(i.price), 'Total Masuk': 0, Terjual: 0, 'Sisa Stok': 0, 'Nilai Sisa (HPP)': rp(0) }];
-        }
-        return sizes.map(size => {
-          const restocked = restockedBySize[size] || 0;
-          const sold = soldBySize[size] || 0;
-          const sisa = restocked - sold;
-          return { SKU: i.sku, 'Nama Produk': i.name, Ukuran: size, 'HPP (Modal)': rp(i.hpp), 'Harga Jual': rp(i.price), 'Total Masuk': restocked, Terjual: sold, 'Sisa Stok': sisa, 'Nilai Sisa (HPP)': rp(sisa * i.hpp) };
-        });
-      });
-
-      const restocksThisMonth = (storeData.restocks || []).filter((r) => inFilterMonth(r.date));
-      const restockSheet = restocksThisMonth.length > 0
-        ? [
-            ...restocksThisMonth.flatMap((r) => {
-              const invItem = storeData.inventory.find((i) => i.sku === r.sku);
-              return r.sizes.filter((s) => s.stock > 0).map((s) => ({
-                'Tanggal Masuk': fmtDate(r.date), SKU: r.sku,
-                'Nama Produk': invItem?.name || '-', Ukuran: s.size,
-                'Qty Masuk': s.stock, 'HPP (Modal)': rp(invItem?.hpp || 0),
-                'Nilai Masuk': rp(s.stock * (invItem?.hpp || 0)), Keterangan: r.note || '-',
-              }));
-            }),
-            {},
-            {
-              'Tanggal Masuk': 'TOTAL', SKU: '', 'Nama Produk': '', Ukuran: '',
-              'Qty Masuk': restocksThisMonth.flatMap(r => r.sizes).reduce((sum, s) => sum + s.stock, 0),
-              'HPP (Modal)': '',
-              'Nilai Masuk': rp(restocksThisMonth.flatMap(r => {
-                const inv = storeData.inventory.find(i => i.sku === r.sku);
-                return r.sizes.map(s => s.stock * (inv?.hpp || 0));
-              }).reduce((a, b) => a + b, 0)),
-              Keterangan: '',
-            },
-          ]
-        : [{ Info: `Tidak ada barang masuk di bulan ${bulanLabel}` }];
-
-      const expenseSheet = [
-        ...expensesThisMonth.map((e) => ({
-          Tanggal: fmtDate(e.date), Kategori: e.category, Deskripsi: e.desc, Nominal: rp(e.amount),
-        })),
-        {},
-        { Tanggal: 'TOTAL', Kategori: '', Deskripsi: '', Nominal: rp(expensesThisMonth.reduce((sum, e) => sum + e.amount, 0)) },
-      ];
-
-      const revenueMonth = isFnb
-        ? fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)
-        : salesThisMonth.reduce((sum, s) => { const inv = storeData.inventory.find(i => i.sku === s.sku); return sum + (inv ? inv.price * s.qty : 0); }, 0);
-      const hppMonth = isFnb
-        ? fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => { const inv = storeData.inventory.find(i => i.sku === si.sku); return sum + (inv ? inv.hpp * si.qty : 0); }, 0)
-        : salesThisMonth.reduce((sum, s) => { const inv = storeData.inventory.find(i => i.sku === s.sku); return sum + (inv ? inv.hpp * s.qty : 0); }, 0);
-      const expenseMonth = expensesThisMonth.reduce((sum, e) => sum + e.amount, 0);
-      const grossMonth = revenueMonth - hppMonth;
-      const netMonth = grossMonth - expenseMonth;
-
-      const profitSheet = [
-        { Keterangan: 'PENDAPATAN', Nominal: '' },
-        { Keterangan: 'Total Omzet', Nominal: rp(revenueMonth) },
-        { Keterangan: '', Nominal: '' },
-        { Keterangan: 'BEBAN POKOK PENJUALAN', Nominal: '' },
-        { Keterangan: 'Total HPP Terjual', Nominal: rp(hppMonth) },
-        { Keterangan: '', Nominal: '' },
-        { Keterangan: 'Laba Kotor', Nominal: rp(grossMonth) },
-        { Keterangan: '', Nominal: '' },
-        { Keterangan: 'BEBAN OPERASIONAL', Nominal: '' },
-        { Keterangan: 'Total Pengeluaran', Nominal: rp(expenseMonth) },
-        { Keterangan: '', Nominal: '' },
-        { Keterangan: 'LABA BERSIH', Nominal: rp(netMonth) },
-      ];
-
-      const makeSheet = (title: string, rows: Record<string, any>[]) => {
-        if (rows.length === 0) rows = [{}];
-        const ws = XLSX.utils.json_to_sheet([{}], { skipHeader: true });
-        XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
-        XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
-        return ws;
-      };
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENJUALAN — ${bulanLabel}`, salesSheet), "Penjualan");
-      XLSX.utils.book_append_sheet(workbook, makeSheet('RINGKASAN STOK BARANG (Akumulatif)', inventorySheet), "Stok Barang");
-      XLSX.utils.book_append_sheet(workbook, makeSheet(`BARANG MASUK — ${bulanLabel}`, restockSheet), "Barang Masuk");
-      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENGELUARAN — ${bulanLabel}`, expenseSheet), "Pengeluaran");
-      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN LABA RUGI — ${bulanLabel}`, profitSheet), "Laba Rugi");
-      XLSX.writeFile(workbook, `laporan-${bulanLabel.replace(' ', '-').toLowerCase()}.xlsx`);
-      toast.success(`Laporan ${bulanLabel} berhasil diexport ke Excel.`);
-    } catch {
-      toast.error('Gagal mengekspor laporan. Coba lagi.');
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault(); setUploading(true);
+    let imageUrl = item.imageUrl;
+    if (imageFile) {
+      try { imageUrl = await uploadProductImage(imageFile, form.sku); }
+      catch { onUploadError('Foto gagal diupload. Pastikan ukuran foto tidak lebih dari 2 MB.'); setUploading(false); return; }
     }
+    onSave(item.sku, { sku: form.sku, name: form.name, hpp: Number(form.hpp), price: Number(form.price), imageUrl: imageUrl ?? undefined });
+    setUploading(false);
   };
-
-
-  // ==============================
-  // AUTO BACKUP EXCEL — sekali per hari saat data pertama kali load
-  // ==============================
-  const autoExportBackup = (data: typeof storeData) => {
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const lastBackupKey = `systemPosLastBackup_${activeStore}`;
-      const lastBackup = localStorage.getItem(lastBackupKey);
-      if (lastBackup === today) return; // sudah backup hari ini
-
-      const now = new Date();
-      const bulanLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-      const rp = (num: number) =>
-        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
-
-      const isFnb = data.storeType === 'fnb';
-
-      // Sheet inventory
-      const inventoryRows = data.inventory.map(i => ({
-        SKU: i.sku, Nama: i.name, HPP: rp(i.hpp), Harga: rp(i.price),
-      }));
-
-      // Sheet penjualan bulan ini
-      const salesRows = isFnb
-        ? (data.fnbSales || []).filter(s => s.date.startsWith(bulanLabel)).map(s => ({
-            Tanggal: s.date,
-            Items: s.items.map(si => `${si.sku}x${si.qty}`).join(', '),
-            Total: rp(s.total),
-          }))
-        : data.sales.filter(s => s.date.startsWith(bulanLabel)).map(s => ({
-            Tanggal: s.date, Invoice: s.invoice || '-',
-            SKU: s.sku, Size: s.size, Qty: s.qty,
-            Status: s.status || 'selesai',
-          }));
-
-      // Sheet pengeluaran bulan ini
-      const expenseRows = data.expenses.filter(e => e.date.startsWith(bulanLabel)).map(e => ({
-        Tanggal: e.date, Kategori: e.category, Deskripsi: e.desc, Nominal: rp(e.amount),
-      }));
-
-      const wb = XLSX.utils.book_new();
-      const addSheet = (name: string, rows: Record<string, any>[]) => {
-        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ Info: 'Tidak ada data' }]);
-        XLSX.utils.book_append_sheet(wb, ws, name);
-      };
-
-      addSheet('Produk', inventoryRows);
-      addSheet('Penjualan', salesRows);
-      addSheet('Pengeluaran', expenseRows);
-
-      const timestamp = today;
-      XLSX.writeFile(wb, `backup-${activeStore}-${timestamp}.xlsx`);
-      localStorage.setItem(lastBackupKey, today);
-      toast.success('Backup otomatis berhasil disimpan ke perangkat.');
-    } catch (err) {
-      console.warn('[autoExportBackup] Gagal backup:', err);
-    }
-  };
-
-  const [newExp, setNewExp] = useState({ date: "", category: "", desc: "", amount: "" });
-
-
-  // Trigger auto backup Excel sekali per hari saat data selesai load
-  useEffect(() => {
-    if (!isStoreLoading && activeStore && storeData.inventory.length + storeData.sales.length + (storeData.fnbSales?.length || 0) > 0) {
-      autoExportBackup(storeData);
-    }
-  }, [isStoreLoading, activeStore]);
-
-  // ==============================
-  // LOAD STORE
-  // ==============================
-
-  useEffect(() => {
-    const savedStore =
-      localStorage.getItem("systemPosStoreCode") ||
-      localStorage.getItem("merchantOsStoreCode");
-    if (savedStore && user) {
-      localStorage.setItem("systemPosStoreCode", savedStore);
-      localStorage.removeItem("merchantOsStoreCode");
-      setActiveStore(savedStore);
-    }
-  }, [user]);
-
-  // ==============================
-  // LOGOUT STORE
-  // ==============================
-
-  const handleLogoutStore = () => {
-    setActiveStore("");
-    localStorage.removeItem("systemPosStoreCode");
-    // PENTING: tidak set storeData ke empty — biarkan useStoreData handle reset via useEffect
-  };
-
-  // ==============================
-  // INVENTORY
-  // ==============================
-
-  const handleAddInventory = (item: InventoryItem) => {
-    const updatedInv = [...(storeData.inventory || []), item];
-    const newData = { ...storeData, inventory: updatedInv };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Produk berhasil ditambahkan.'))
-      .catch(() => toast.error('Gagal menyimpan produk. Periksa koneksi internet kamu.'));
-  };
-
-  const handleDeleteInventory = (sku: string) => {
-    const item = storeData.inventory.find(i => i.sku === sku);
-    confirm(
-      'Hapus Produk',
-      `Yakin mau hapus "${item?.name || sku}"? Data tidak bisa dikembalikan.`,
-      () => {
-        const updatedInv = storeData.inventory.filter((i) => i.sku !== sku);
-        const newData = { ...storeData, inventory: updatedInv };
-        setStoreData(newData);
-        saveToCloud(newData)
-          .then(() => toast.success('Produk berhasil dihapus.'))
-          .catch(() => toast.error('Gagal menghapus produk. Coba lagi.'));
-      }
-    );
-  };
-
-  const handleUpdateInventory = (oldSku: string, item: InventoryItem) => {
-    const updatedInv = storeData.inventory.map((i) => i.sku === oldSku ? item : i);
-    const newData = { ...storeData, inventory: updatedInv };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Data produk berhasil diperbarui.'))
-      .catch(() => toast.error('Gagal memperbarui produk. Periksa koneksi internet kamu.'));
-  };
-
-  const handleAddRestock = (restock: Omit<RestockItem, "id">) => {
-    const newRestock: RestockItem = { id: Date.now().toString(), ...restock };
-    const updatedRestocks = [newRestock, ...(storeData.restocks || [])];
-    const newData = { ...storeData, restocks: updatedRestocks };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Restock berhasil dicatat.'))
-      .catch(() => toast.error('Gagal menyimpan restock. Coba lagi.'));
-  };
-
-  const handleDeleteRestock = (id: string) => {
-    confirm(
-      'Hapus Restock',
-      'Yakin mau hapus riwayat restock ini? Data tidak bisa dikembalikan.',
-      () => {
-        const updatedRestocks = (storeData.restocks || []).filter((r) => r.id !== id);
-        const newData = { ...storeData, restocks: updatedRestocks };
-        setStoreData(newData);
-        saveToCloud(newData)
-          .then(() => toast.success('Restock berhasil dihapus.'))
-          .catch(() => toast.error('Gagal menghapus restock. Coba lagi.'));
-      }
-    );
-  };
-
-  // ==============================
-  // SALES
-  // ==============================
-
-  const handleAddSale = (sale: Omit<SaleItem, "id">) => {
-    const newSale: SaleItem = {
-      id: Date.now().toString(),
-      date: sale.date, invoice: sale.invoice, sku: sale.sku,
-      qty: Number(sale.qty), size: sale.size,
-      status: sale.status || 'selesai',
-      dpAmount: sale.status === 'dp' ? sale.dpAmount : undefined,
-    };
-    const updatedSales = [newSale, ...(storeData.sales || [])];
-    const newData = { ...storeData, sales: updatedSales };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Penjualan berhasil dicatat.'))
-      .catch(() => toast.error('Gagal menyimpan penjualan. Periksa koneksi internet kamu.'));
-  };
-
-  const handleDeleteSale = (id: string) => {
-    confirm(
-      'Hapus Penjualan',
-      'Yakin mau hapus transaksi ini? Data tidak bisa dikembalikan.',
-      () => {
-        const updatedSales = storeData.sales.filter((s) => s.id !== id);
-        const newData = { ...storeData, sales: updatedSales };
-        setStoreData(newData);
-        saveToCloud(newData)
-          .then(() => toast.success('Data penjualan berhasil dihapus.'))
-          .catch(() => toast.error('Gagal menghapus penjualan. Coba lagi.'));
-      }
-    );
-  };
-
-  const handleAddFnbSale = (sale: Omit<FnbSaleItem, "id">) => {
-    const newSale: FnbSaleItem = { id: Date.now().toString(), ...sale };
-    const updatedFnbSales = [newSale, ...(storeData.fnbSales || [])];
-    const newData = { ...storeData, fnbSales: updatedFnbSales };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Penjualan berhasil dicatat.'))
-      .catch(() => toast.error('Gagal menyimpan penjualan. Periksa koneksi internet kamu.'));
-  };
-
-  const handleDeleteFnbSale = (id: string) => {
-    confirm(
-      'Hapus Transaksi',
-      'Yakin mau hapus transaksi ini? Data tidak bisa dikembalikan.',
-      () => {
-        const updatedFnbSales = (storeData.fnbSales || []).filter((s) => s.id !== id);
-        const newData = { ...storeData, fnbSales: updatedFnbSales };
-        setStoreData(newData);
-        saveToCloud(newData)
-          .then(() => toast.success('Transaksi berhasil dihapus.'))
-          .catch(() => toast.error('Gagal menghapus transaksi. Coba lagi.'));
-      }
-    );
-  };
-
-  const handleUpdateSaleStatus = (id: string, status: SaleStatus, dpAmount?: number) => {
-    const updatedSales = storeData.sales.map((s) =>
-      s.id === id ? { ...s, status, dpAmount: status === 'dp' ? dpAmount : undefined } : s
-    );
-    const newData = { ...storeData, sales: updatedSales };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Status berhasil diperbarui.'))
-      .catch(() => toast.error('Gagal memperbarui status. Coba lagi.'));
-  };
-
-  // ==============================
-  // EXPENSE
-  // ==============================
-
-  const handleAddExpense = (expense: Omit<ExpenseItem, "id">) => {
-    const exp: ExpenseItem = {
-      id: Date.now().toString(),
-      date: expense.date, category: expense.category,
-      desc: expense.desc, amount: Number(expense.amount),
-    };
-    const updatedExpenses = [exp, ...(storeData.expenses || [])];
-    const newData = { ...storeData, expenses: updatedExpenses };
-    setStoreData(newData);
-    saveToCloud(newData)
-      .then(() => toast.success('Pengeluaran berhasil dicatat.'))
-      .catch(() => toast.error('Gagal menyimpan pengeluaran. Periksa koneksi internet kamu.'));
-    setNewExp({ ...newExp, desc: "", amount: "" });
-  };
-
-  const handleDeleteExpense = (id: string) => {
-    confirm(
-      'Hapus Pengeluaran',
-      'Yakin mau hapus data pengeluaran ini? Data tidak bisa dikembalikan.',
-      () => {
-        const updatedExpenses = storeData.expenses.filter((exp) => exp.id !== id);
-        const newData = { ...storeData, expenses: updatedExpenses };
-        setStoreData(newData);
-        saveToCloud(newData)
-          .then(() => toast.success('Pengeluaran berhasil dihapus.'))
-          .catch(() => toast.error('Gagal menghapus pengeluaran. Coba lagi.'));
-      }
-    );
-  };
-
-  // ==============================
-  // LOADING
-  // ==============================
-
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}>
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: '#8b5cf6', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: '#6b7280' }}>Menghubungkan...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!activeStore) return <AuthScreen setActiveStore={setActiveStore} />;
-
-  if (isStoreLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}>
-        <div className="text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: '#8b5cf6', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: '#6b7280' }}>Memuat data toko...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#0a0a0f' }}>
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        activeStore={activeStore}
-        storeType={storeData.storeType}
-        handleLogoutStore={handleLogoutStore}
-      />
-      <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden" style={{ background: '#0a0a0f' }}>
-        {activeTab === "dashboard" && (
-          <DashboardTab
-            handleExportData={handleExportData}
-            metrics={metrics}
-            storeData={storeData}
-            filterMonth={filterMonth}
-            onFilterMonthChange={setFilterMonth}
-          />
-        )}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: '#00000080' }}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${D.border}` }}>
+          <h3 className="font-bold text-base" style={{ color: D.text }}>Edit Produk</h3>
+          <button onClick={onClose} style={{ color: D.muted }}><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSave} className="p-6 space-y-4">
+          <div className="flex gap-3 items-center">
+            {imagePreview
+              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl shrink-0" style={{ border: `1px solid ${D.border}` }} />
+              : <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0" style={{ background: D.elevated }}><ImageOff size={24} style={{ color: D.muted }} /></div>
+            }
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm" style={{ border: '1px dashed #ffffff20', color: D.muted }}>
+                <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              <p className="text-[11px]" style={{ color: '#4b5563' }}>Format: JPG, PNG, WEBP · Maks. 2 MB</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label style={lbl}>SKU</label><input required value={form.sku} onChange={e => setForm({ ...form, sku: e.target.value })} style={inp} /></div>
+            <div><label style={lbl}>Nama Produk</label><input required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={inp} /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><label style={lbl}>HPP</label><input required type="number" value={form.hpp} onChange={e => setForm({ ...form, hpp: e.target.value })} style={inp} /></div>
+            <div><label style={lbl}>Harga Jual</label><input required type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} style={inp} /></div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm rounded-lg font-medium"
+              style={{ background: D.elevated, color: D.muted, border: `1px solid ${D.border}` }}>Batal</button>
+            <button type="submit" disabled={uploading} className="px-5 py-2 text-sm rounded-lg font-medium flex items-center gap-2 disabled:opacity-60"
+              style={{ background: D.accent, color: '#fff' }}>
+              {uploading ? 'Mengupload...' : <><Check size={15} /> Simpan</>}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
-        {activeTab === "stok" && (
-          storeData.storeType === 'fnb'
-            ? <FnbInventoryTab
-                metrics={metrics}
-                filterMonth={filterMonth}
-                onFilterMonthChange={setFilterMonth}
-                onAddInventory={handleAddInventory}
-                onDeleteInventory={handleDeleteInventory}
-                onUpdateInventory={handleUpdateInventory}
-                onUploadError={(msg) => toast.error(msg)}
-              />
-            : <InventoryTab
-                metrics={metrics}
-                storeData={storeData}
-                filterMonth={filterMonth}
-                onFilterMonthChange={setFilterMonth}
-                onAddInventory={handleAddInventory}
-                onDeleteInventory={handleDeleteInventory}
-                onUpdateInventory={handleUpdateInventory}
-                onAddRestock={handleAddRestock}
-                onDeleteRestock={handleDeleteRestock}
-                onUploadError={(msg) => toast.error(msg)}
-              />
-        )}
+function RestockModal({ item, restockHistory, onClose, onAddRestock, onDeleteRestock }: {
+  item: InventoryItem; restockHistory: RestockItem[];
+  onClose: () => void;
+  onAddRestock: (restock: Omit<RestockItem, "id">) => void;
+  onDeleteRestock: (id: string) => void;
+}) {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [note, setNote] = useState('');
+  const [sizeStocks, setSizeStocks] = useState<Record<string, string>>(Object.fromEntries(SIZES.map(s => [s, ''])));
 
-        {activeTab === "penjualan" && (
-          storeData.storeType === 'fnb'
-            ? <FnbSalesTab
-                storeData={storeData}
-                metrics={metrics}
-                filterMonth={filterMonth}
-                onFilterMonthChange={setFilterMonth}
-                onAddFnbSale={handleAddFnbSale}
-                onDeleteFnbSale={handleDeleteFnbSale}
-              />
-            : <SalesTab
-                storeData={storeData}
-                metrics={metrics}
-                filterMonth={filterMonth}
-                onFilterMonthChange={setFilterMonth}
-                onAddSale={handleAddSale}
-                onDeleteSale={handleDeleteSale}
-                onUpdateSaleStatus={handleUpdateSaleStatus}
-              />
-        )}
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    const sizes = SIZES.map(size => ({ size, stock: Number(sizeStocks[size]) || 0 }));
+    if (!sizes.some(s => s.stock > 0)) { alert('Isi minimal 1 ukuran'); return; }
+    onAddRestock({ sku: item.sku, date, sizes, note });
+    setSizeStocks(Object.fromEntries(SIZES.map(s => [s, '']))); setNote('');
+  };
 
-        {activeTab === "pengeluaran" && (
-          <ExpensesTab
-            storeData={storeData}
-            filterMonth={filterMonth}
-            onFilterMonthChange={setFilterMonth}
-            onAddExpense={handleAddExpense}
-            onDeleteExpense={handleDeleteExpense}
-          />
-        )}
+  const sorted = [...restockHistory].sort((a, b) => b.date.localeCompare(a.date));
 
-        {activeTab === "closing" && (
-          <ClosingTab storeData={storeData} metrics={metrics} />
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: '#00000080' }}>
+      <div className="w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl overflow-hidden" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+        <div className="flex items-center justify-between px-6 py-4 shrink-0" style={{ borderBottom: `1px solid ${D.border}` }}>
+          <div className="flex items-center gap-3">
+            <ProductImage url={item.imageUrl} name={item.name} size="sm" />
+            <div>
+              <h3 className="font-bold text-base" style={{ color: D.text }}>Restock Barang</h3>
+              <p className="text-xs" style={{ color: D.muted }}>{item.sku} — {item.name}</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ color: D.muted }}><X size={20} /></button>
+        </div>
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          <form onSubmit={handleAdd} className="space-y-4 p-4 rounded-xl" style={{ background: D.elevated, border: `1px solid ${D.border}` }}>
+            <p className="text-xs font-semibold uppercase" style={{ color: D.accent }}>Tambah Restock Baru</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label style={lbl}>Tanggal Masuk</label><input required type="date" value={date} onChange={e => setDate(e.target.value)} style={inp} /></div>
+              <div><label style={lbl}>Keterangan</label><input value={note} onChange={e => setNote(e.target.value)} placeholder="Opsional" style={inp} /></div>
+            </div>
+            <div>
+              <label style={lbl}>Qty per Ukuran</label>
+              <div className="grid grid-cols-5 gap-2">
+                {SIZES.map(size => (
+                  <div key={size} className="space-y-1">
+                    <div className="text-center text-xs font-bold py-0.5 rounded" style={{ background: D.accentDim, color: D.accent }}>{size}</div>
+                    <input type="number" min="0" value={sizeStocks[size]}
+                      onChange={e => setSizeStocks(prev => ({ ...prev, [size]: e.target.value }))}
+                      placeholder="0" style={{ ...inp, textAlign: 'center' }} />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <button type="submit" className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2"
+                style={{ background: D.accent, color: '#fff' }}>
+                <PackagePlus size={15} /> Tambah Restock
+              </button>
+            </div>
+          </form>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase flex items-center gap-1" style={{ color: D.muted }}>
+              <History size={12} /> Riwayat Restock
+            </p>
+            {sorted.length === 0 && <p className="text-sm text-center py-4" style={{ color: D.muted }}>Belum ada riwayat restock.</p>}
+            {sorted.map(r => {
+              const total = r.sizes.reduce((sum, s) => sum + s.stock, 0);
+              return (
+                <div key={r.id} className="flex items-start justify-between px-4 py-3 rounded-lg" style={{ background: D.elevated, border: `1px solid ${D.border}` }}>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold" style={{ color: D.text }}>{r.date}</span>
+                      {r.note && <span className="text-xs" style={{ color: D.muted }}>— {r.note}</span>}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {r.sizes.filter(s => s.stock > 0).map(s => (
+                        <span key={s.size} className="text-xs font-medium px-2 py-0.5 rounded"
+                          style={{ background: D.surface, border: `1px solid ${D.border}`, color: D.muted }}>
+                          {s.size}: {s.stock}
+                        </span>
+                      ))}
+                      <span className="text-xs px-1" style={{ color: D.muted }}>= {total} pcs</span>
+                    </div>
+                  </div>
+                  <button onClick={() => onDeleteRestock(r.id)} className="ml-3 shrink-0 transition" style={{ color: D.muted }}>
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductCard({ item, onEdit, onDelete, onRestock }: {
+  item: any; onEdit: () => void; onDelete: () => void; onRestock: () => void;
+}) {
+  const lowSizes = SIZES.filter(size => {
+    const restocked = item.restockedBySize?.[size] || 0;
+    const sold = item.soldBySize?.[size] || 0;
+    return restocked > 0 && (restocked - sold) <= 3;
+  });
+
+  return (
+    <div className="rounded-xl overflow-hidden flex flex-col" style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+      <div className="relative">
+        <ProductImage url={item.imageUrl} name={item.name} size="md" />
+        {lowSizes.length > 0 && (
+          <span className="absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full"
+            style={{ background: D.warning, color: '#000' }}>
+            Stok Menipis
+          </span>
         )}
-      </main>
-      <ConfirmDialog
-        isOpen={confirmState.isOpen}
-        title={confirmState.title}
-        message={confirmState.message}
-        confirmLabel={confirmState.confirmLabel}
-        onConfirm={confirmState.onConfirm}
-        onCancel={cancelConfirm}
-      />
-      <Toast toasts={toast.toasts} onRemove={toast.remove} />
+      </div>
+      <div className="p-4 flex flex-col flex-1 space-y-3">
+        <div>
+          <p className="text-xs font-mono" style={{ color: D.muted }}>{item.sku}</p>
+          <h3 className="font-bold text-sm leading-tight" style={{ color: D.text }}>{item.name}</h3>
+          <p className="text-sm font-semibold mt-0.5" style={{ color: D.success }}>{formatRp(item.price)}</p>
+          <p className="text-xs" style={{ color: D.muted }}>Modal: {formatRp(item.hpp)}</p>
+        </div>
+        <div className="grid grid-cols-5 gap-1">
+          {SIZES.map(size => {
+            const restocked = item.restockedBySize?.[size] || 0;
+            const sold = item.soldBySize?.[size] || 0;
+            const remaining = restocked - sold;
+            const hasStock = restocked > 0;
+            const bg = !hasStock ? D.elevated : remaining <= 0 ? '#7f1d1d' : remaining <= 3 ? '#78350f' : '#14532d';
+            const color = !hasStock ? D.muted : remaining <= 0 ? '#fca5a5' : remaining <= 3 ? '#fde68a' : '#86efac';
+            return (
+              <div key={size} className="rounded-lg p-1.5 text-center" style={{ background: bg }}>
+                <p className="text-[9px] font-bold" style={{ color: D.muted }}>{size}</p>
+                <p className="text-sm font-bold" style={{ color }}>{hasStock ? remaining : '-'}</p>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs" style={{ color: D.muted }}>
+          Total sisa: <span className="font-semibold" style={{ color: D.text }}>{item.current} pcs</span>
+        </p>
+        <div className="flex gap-2 pt-1 mt-auto">
+          <button onClick={onRestock}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium rounded-lg transition"
+            style={{ background: D.successDim, color: D.success, border: `1px solid ${D.success}30` }}>
+            <PackagePlus size={13} /> Restock
+          </button>
+          <button onClick={onEdit}
+            className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium rounded-lg transition"
+            style={{ background: D.accentDim, color: D.accent, border: `1px solid ${D.accent}30` }}>
+            <Pencil size={13} /> Edit
+          </button>
+          <button onClick={onDelete}
+            className="px-2.5 py-1.5 text-xs rounded-lg transition"
+            style={{ background: D.dangerDim, color: D.danger, border: `1px solid ${D.danger}30` }}>
+            <Trash2 size={13} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function InventoryTab({
+  metrics, storeData, filterMonth, onFilterMonthChange,
+  onAddInventory, onDeleteInventory, onUpdateInventory,
+  onAddRestock, onDeleteRestock, onUploadError,
+}: InventoryTabProps) {
+  const [newInv, setNewInv] = useState({ sku: '', name: '', hpp: '', price: '' });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | undefined>();
+  const [uploading, setUploading] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [restockingItem, setRestockingItem] = useState<InventoryItem | null>(null);
+  const [search, setSearch] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { onUploadError('Ukuran foto terlalu besar. Maksimal 2 MB.'); e.target.value = ''; return; }
+    setImageFile(file); setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const skuExists = Object.keys(metrics.stockMap).includes(newInv.sku);
+    if (skuExists) { onUploadError(`SKU "${newInv.sku}" sudah dipakai produk lain.`); return; }
+    setUploading(true);
+    let imageUrl: string | null = null;
+    if (imageFile) {
+      try { imageUrl = await uploadProductImage(imageFile, newInv.sku); }
+      catch { onUploadError('Foto gagal diupload. Pastikan ukuran foto tidak lebih dari 2 MB.'); setUploading(false); return; }
+    }
+    onAddInventory({ sku: newInv.sku, name: newInv.name, hpp: Number(newInv.hpp), price: Number(newInv.price), imageUrl });
+    setNewInv({ sku: '', name: '', hpp: '', price: '' });
+    setImageFile(null); setImagePreview(undefined); setUploading(false); setShowForm(false);
+  };
+
+  const handleSearchChange = (q: string) => { setSearch(q); setPage(1); };
+
+  const filteredItems = useMemo(() => {
+    const q = search.toLowerCase();
+    return Object.values(metrics.stockMap).filter((item: any) =>
+      !q || item.sku.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
+    );
+  }, [metrics.stockMap, search]);
+
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+  const paginatedItems = filteredItems.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <div className="space-y-6 animate-fade-in" style={{ color: D.text }}>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3"
+        style={{ borderBottom: `1px solid ${D.border}` }}>
+        <h2 className="text-xl font-semibold" style={{ color: D.text }}>Database & Stok Barang</h2>
+        <MonthFilter value={filterMonth} onChange={onFilterMonthChange} />
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: D.muted }} />
+          <input value={search} onChange={e => handleSearchChange(e.target.value)}
+            placeholder="Cari SKU atau nama produk..."
+            className="w-full pl-9 pr-4 py-2 text-sm rounded-xl outline-none"
+            style={{ background: D.elevated, border: `1px solid ${D.border}`, color: D.text }} />
+        </div>
+        <button onClick={() => setShowForm(!showForm)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition shrink-0"
+          style={{ background: D.accent, color: '#fff' }}>
+          <Plus size={16} /> Tambah Produk
+        </button>
+      </div>
+
+      {showForm && (
+        <form onSubmit={handleAdd} className="p-5 space-y-4 rounded-xl"
+          style={{ background: D.surface, border: `1px solid ${D.border}` }}>
+          <p className="text-xs font-semibold uppercase" style={{ color: D.muted }}>Daftarkan Produk Baru</p>
+          <div className="flex items-center gap-4">
+            {imagePreview
+              ? <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-xl shrink-0" style={{ border: `1px solid ${D.border}` }} />
+              : <div className="w-20 h-20 rounded-xl flex items-center justify-center shrink-0" style={{ background: D.elevated }}><ImageOff size={24} style={{ color: D.muted }} /></div>
+            }
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer text-sm" style={{ border: '1px dashed #ffffff20', color: D.muted }}>
+                <Upload size={16} /> {imagePreview ? 'Ganti Foto' : 'Upload Foto Produk'}
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
+              </label>
+              <p className="text-[11px]" style={{ color: '#4b5563' }}>Format: JPG, PNG, WEBP · Maks. 2 MB</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div><label style={lbl}>SKU</label><input required value={newInv.sku} onChange={e => setNewInv({ ...newInv, sku: e.target.value })} placeholder="TS-001" style={inp} /></div>
+            <div><label style={lbl}>Nama Produk</label><input required value={newInv.name} onChange={e => setNewInv({ ...newInv, name: e.target.value })} placeholder="Kaos Polos Hitam" style={inp} /></div>
+            <div><label style={lbl}>HPP (Modal)</label><input required type="number" value={newInv.hpp} onChange={e => setNewInv({ ...newInv, hpp: e.target.value })} placeholder="40000" style={inp} /></div>
+            <div>
+              <label style={lbl}>Harga Jual</label>
+              <div className="flex gap-2">
+                <input required type="number" value={newInv.price} onChange={e => setNewInv({ ...newInv, price: e.target.value })} placeholder="85000" style={inp} />
+                <button type="submit" disabled={uploading} className="p-2 rounded-lg transition disabled:opacity-60 shrink-0"
+                  style={{ background: D.accent, color: '#fff' }}>
+                  {uploading ? '...' : <Plus size={20} />}
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
+
+      {filteredItems.length === 0
+        ? <div className="text-center py-16 text-sm" style={{ color: D.muted }}>
+            {search ? `Tidak ada produk dengan kata kunci "${search}"` : 'Belum ada barang di database.'}
+          </div>
+        : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {paginatedItems.map((item: any) => (
+                <ProductCard key={item.sku} item={item}
+                  onEdit={() => setEditingItem(item)}
+                  onDelete={() => onDeleteInventory(item.sku)}
+                  onRestock={() => setRestockingItem(item)}
+                />
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-xs" style={{ color: D.muted }}>{filteredItems.length} produk · halaman {page} dari {totalPages}</p>
+              <Pagination currentPage={page} totalPages={totalPages} onPageChange={setPage} />
+            </div>
+          </>
+        )
+      }
+
+      {editingItem && (
+        <EditModal item={editingItem} onClose={() => setEditingItem(null)}
+          onSave={(oldSku, updated) => { onUpdateInventory(oldSku, updated); setEditingItem(null); }}
+          onUploadError={onUploadError} />
+      )}
+      {restockingItem && (
+        <RestockModal item={restockingItem}
+          restockHistory={(storeData.restocks || []).filter((r: RestockItem) => r.sku === restockingItem.sku)}
+          onClose={() => setRestockingItem(null)}
+          onAddRestock={onAddRestock}
+          onDeleteRestock={onDeleteRestock} />
+      )}
     </div>
   );
 }
