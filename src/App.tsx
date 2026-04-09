@@ -218,7 +218,76 @@ export default function App() {
     }
   };
 
+
+  // ==============================
+  // AUTO BACKUP EXCEL — sekali per hari saat data pertama kali load
+  // ==============================
+  const autoExportBackup = (data: typeof storeData) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const lastBackupKey = `systemPosLastBackup_${activeStore}`;
+      const lastBackup = localStorage.getItem(lastBackupKey);
+      if (lastBackup === today) return; // sudah backup hari ini
+
+      const now = new Date();
+      const bulanLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      const rp = (num: number) =>
+        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+
+      const isFnb = data.storeType === 'fnb';
+
+      // Sheet inventory
+      const inventoryRows = data.inventory.map(i => ({
+        SKU: i.sku, Nama: i.name, HPP: rp(i.hpp), Harga: rp(i.price),
+      }));
+
+      // Sheet penjualan bulan ini
+      const salesRows = isFnb
+        ? (data.fnbSales || []).filter(s => s.date.startsWith(bulanLabel)).map(s => ({
+            Tanggal: s.date,
+            Items: s.items.map(si => `${si.sku}x${si.qty}`).join(', '),
+            Total: rp(s.total),
+          }))
+        : data.sales.filter(s => s.date.startsWith(bulanLabel)).map(s => ({
+            Tanggal: s.date, Invoice: s.invoice || '-',
+            SKU: s.sku, Size: s.size, Qty: s.qty,
+            Status: s.status || 'selesai',
+          }));
+
+      // Sheet pengeluaran bulan ini
+      const expenseRows = data.expenses.filter(e => e.date.startsWith(bulanLabel)).map(e => ({
+        Tanggal: e.date, Kategori: e.category, Deskripsi: e.desc, Nominal: rp(e.amount),
+      }));
+
+      const wb = XLSX.utils.book_new();
+      const addSheet = (name: string, rows: Record<string, any>[]) => {
+        const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ Info: 'Tidak ada data' }]);
+        XLSX.utils.book_append_sheet(wb, ws, name);
+      };
+
+      addSheet('Produk', inventoryRows);
+      addSheet('Penjualan', salesRows);
+      addSheet('Pengeluaran', expenseRows);
+
+      const timestamp = today;
+      XLSX.writeFile(wb, `backup-${activeStore}-${timestamp}.xlsx`);
+      localStorage.setItem(lastBackupKey, today);
+      toast.success('Backup otomatis berhasil disimpan ke perangkat.');
+    } catch (err) {
+      console.warn('[autoExportBackup] Gagal backup:', err);
+    }
+  };
+
   const [newExp, setNewExp] = useState({ date: "", category: "", desc: "", amount: "" });
+
+
+  // Trigger auto backup Excel sekali per hari saat data selesai load
+  useEffect(() => {
+    if (!isStoreLoading && activeStore && storeData.inventory.length + storeData.sales.length + (storeData.fnbSales?.length || 0) > 0) {
+      autoExportBackup(storeData);
+    }
+  }, [isStoreLoading, activeStore]);
 
   // ==============================
   // LOAD STORE
