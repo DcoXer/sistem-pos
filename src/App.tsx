@@ -1,4 +1,3 @@
-<script src="http://localhost:8097"></script>;
 import { useState, useEffect } from "react";
 import { useAuth } from "./hooks/useAuth";
 import { useStoreData } from "./hooks/useStoreData";
@@ -28,11 +27,7 @@ export default function App() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
 
-  const { storeData, setStoreData, saveToCloud, isStoreLoading } = useStoreData(
-    user,
-    activeStore,
-  );
-
+  const { storeData, setStoreData, saveToCloud, isStoreLoading } = useStoreData(user, activeStore);
   const metrics = useMetrics(storeData);
   const toast = useToast();
   const { confirmState, confirm, cancelConfirm } = useConfirm();
@@ -43,276 +38,197 @@ export default function App() {
 
   const handleExportData = () => {
     try {
-    const [fy, fm] = filterMonth.split('-').map(Number);
-    const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
-      'Juli','Agustus','September','Oktober','November','Desember'];
-    const bulanLabel = `${MONTH_NAMES[fm - 1]} ${fy}`;
+      const [fy, fm] = filterMonth.split('-').map(Number);
+      const MONTH_NAMES = ['Januari','Februari','Maret','April','Mei','Juni',
+        'Juli','Agustus','September','Oktober','November','Desember'];
+      const bulanLabel = `${MONTH_NAMES[fm - 1]} ${fy}`;
 
-    const rp = (num: number) =>
-      new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+      const rp = (num: number) =>
+        new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
 
-    const fmtDate = (d: string) => {
-      const dt = new Date(d);
-      return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
-    };
+      const fmtDate = (d: string) => {
+        const dt = new Date(d);
+        return `${dt.getDate().toString().padStart(2,'0')}/${(dt.getMonth()+1).toString().padStart(2,'0')}/${dt.getFullYear()}`;
+      };
 
-    const STATUS_LABEL: Record<string, string> = {
-      pending: 'Pending (PO)',
-      dp: 'DP',
-      selesai: 'Selesai',
-    };
+      const STATUS_LABEL: Record<string, string> = {
+        pending: 'Pending (PO)', dp: 'DP', selesai: 'Selesai',
+      };
 
-    const inFilterMonth = (dateStr: string) => {
-      const d = new Date(dateStr);
-      return d.getFullYear() === fy && d.getMonth() + 1 === fm;
-    };
+      const inFilterMonth = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d.getFullYear() === fy && d.getMonth() + 1 === fm;
+      };
 
-    const isFnb = storeData.storeType === 'fnb';
-    const salesThisMonth = storeData.sales.filter((s) => inFilterMonth(s.date));
-    const fnbSalesThisMonth = (storeData.fnbSales || []).filter((s) => inFilterMonth(s.date));
-    const expensesThisMonth = storeData.expenses.filter((e) => inFilterMonth(e.date));
+      const isFnb = storeData.storeType === 'fnb';
+      const salesThisMonth = storeData.sales.filter((s) => inFilterMonth(s.date));
+      const fnbSalesThisMonth = (storeData.fnbSales || []).filter((s) => inFilterMonth(s.date));
+      const expensesThisMonth = storeData.expenses.filter((e) => inFilterMonth(e.date));
 
-    // ===== SHEET 1: PENJUALAN =====
-    const salesSheet = isFnb
-      ? [
-          // FnB — tiap transaksi bisa multi item, expand per item
-          ...fnbSalesThisMonth.flatMap((s) =>
-            s.items.map((si) => {
-              const invItem = storeData.inventory.find((i) => i.sku === si.sku);
+      const salesSheet = isFnb
+        ? [
+            ...fnbSalesThisMonth.flatMap((s) =>
+              s.items.map((si) => {
+                const invItem = storeData.inventory.find((i) => i.sku === si.sku);
+                return {
+                  Tanggal: fmtDate(s.date),
+                  'Nama Produk': invItem?.name || si.sku,
+                  SKU: si.sku,
+                  Qty: si.qty,
+                  'Harga Satuan': rp(invItem?.price || 0),
+                  'Subtotal': rp((invItem?.price || 0) * si.qty),
+                };
+              })
+            ),
+            {},
+            {
+              Tanggal: 'TOTAL', 'Nama Produk': '', SKU: '',
+              Qty: fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => sum + si.qty, 0),
+              'Harga Satuan': '',
+              'Subtotal': rp(fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)),
+            },
+          ]
+        : [
+            ...salesThisMonth.map((s) => {
+              const invItem = storeData.inventory.find((i) => i.sku === s.sku);
+              const total = invItem ? invItem.price * s.qty : 0;
+              const status = s.status || 'selesai';
+              const dp = status === 'dp' ? (s.dpAmount || 0) : status === 'selesai' ? total : 0;
+              const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
               return {
                 Tanggal: fmtDate(s.date),
-                'Nama Produk': invItem?.name || si.sku,
-                SKU: si.sku,
-                Qty: si.qty,
+                'No. Invoice': s.invoice || '-',
+                'Nama Produk': invItem?.name || s.sku,
+                SKU: s.sku, Ukuran: s.size || '-', Qty: s.qty,
                 'Harga Satuan': rp(invItem?.price || 0),
-                'Subtotal': rp((invItem?.price || 0) * si.qty),
+                'Total Harga': rp(total),
+                Status: STATUS_LABEL[status] || status,
+                'DP Masuk': dp > 0 ? rp(dp) : '-',
+                'Sisa Tagihan': sisa > 0 ? rp(sisa) : '-',
               };
-            })
-          ),
-          {},
-          {
-            Tanggal: 'TOTAL',
-            'Nama Produk': '',
-            SKU: '',
-            Qty: fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => sum + si.qty, 0),
-            'Harga Satuan': '',
-            'Subtotal': rp(fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)),
-          },
-        ]
-      : [
-          // Fashion
-          ...salesThisMonth.map((s) => {
-            const invItem = storeData.inventory.find((i) => i.sku === s.sku);
-            const total = invItem ? invItem.price * s.qty : 0;
-            const status = s.status || 'selesai';
-            const dp = status === 'dp' ? (s.dpAmount || 0) : status === 'selesai' ? total : 0;
-            const sisa = status === 'selesai' ? 0 : status === 'pending' ? total : total - dp;
-            return {
-              Tanggal: fmtDate(s.date),
-              'No. Invoice': s.invoice || '-',
-              'Nama Produk': invItem?.name || s.sku,
-              SKU: s.sku,
-              Ukuran: s.size || '-',
-              Qty: s.qty,
-              'Harga Satuan': rp(invItem?.price || 0),
-              'Total Harga': rp(total),
-              Status: STATUS_LABEL[status] || status,
-              'DP Masuk': dp > 0 ? rp(dp) : '-',
-              'Sisa Tagihan': sisa > 0 ? rp(sisa) : '-',
-            };
-          }),
-          {},
-          {
-            Tanggal: 'TOTAL',
-            'No. Invoice': '',
-            'Nama Produk': '',
-            SKU: '',
-            Ukuran: '',
-            Qty: salesThisMonth.reduce((s, x) => s + x.qty, 0),
-            'Harga Satuan': '',
-            'Total Harga': rp(salesThisMonth.reduce((sum, s) => {
-              const inv = storeData.inventory.find(i => i.sku === s.sku);
-              return sum + (inv ? inv.price * s.qty : 0);
-            }, 0)),
-            Status: '',
-            'DP Masuk': rp(salesThisMonth.filter(s => s.status === 'dp').reduce((sum, s) => sum + (s.dpAmount || 0), 0)),
-            'Sisa Tagihan': '',
-          },
-        ];
+            }),
+            {},
+            {
+              Tanggal: 'TOTAL', 'No. Invoice': '', 'Nama Produk': '', SKU: '', Ukuran: '',
+              Qty: salesThisMonth.reduce((s, x) => s + x.qty, 0),
+              'Harga Satuan': '',
+              'Total Harga': rp(salesThisMonth.reduce((sum, s) => {
+                const inv = storeData.inventory.find(i => i.sku === s.sku);
+                return sum + (inv ? inv.price * s.qty : 0);
+              }, 0)),
+              Status: '',
+              'DP Masuk': rp(salesThisMonth.filter(s => s.status === 'dp').reduce((sum, s) => sum + (s.dpAmount || 0), 0)),
+              'Sisa Tagihan': '',
+            },
+          ];
 
-    // ===== SHEET 2: RINGKASAN STOK =====
-    const inventorySheet = [
-      ...storeData.inventory.flatMap((i) => {
+      const inventorySheet = storeData.inventory.flatMap((i) => {
         const stockData = metrics.stockMap[i.sku];
         const restockedBySize = stockData?.restockedBySize || {};
         const soldBySize = stockData?.soldBySize || {};
         const sizes = Object.keys(restockedBySize);
-
         if (sizes.length === 0) {
-          return [{
-            SKU: i.sku,
-            'Nama Produk': i.name,
-            Ukuran: '-',
-            'HPP (Modal)': rp(i.hpp),
-            'Harga Jual': rp(i.price),
-            'Total Masuk': 0,
-            Terjual: 0,
-            'Sisa Stok': 0,
-            'Nilai Sisa (HPP)': rp(0),
-          }];
+          return [{ SKU: i.sku, 'Nama Produk': i.name, Ukuran: '-', 'HPP (Modal)': rp(i.hpp), 'Harga Jual': rp(i.price), 'Total Masuk': 0, Terjual: 0, 'Sisa Stok': 0, 'Nilai Sisa (HPP)': rp(0) }];
         }
-
         return sizes.map(size => {
           const restocked = restockedBySize[size] || 0;
           const sold = soldBySize[size] || 0;
           const sisa = restocked - sold;
-          return {
-            SKU: i.sku,
-            'Nama Produk': i.name,
-            Ukuran: size,
-            'HPP (Modal)': rp(i.hpp),
-            'Harga Jual': rp(i.price),
-            'Total Masuk': restocked,
-            Terjual: sold,
-            'Sisa Stok': sisa,
-            'Nilai Sisa (HPP)': rp(sisa * i.hpp),
-          };
+          return { SKU: i.sku, 'Nama Produk': i.name, Ukuran: size, 'HPP (Modal)': rp(i.hpp), 'Harga Jual': rp(i.price), 'Total Masuk': restocked, Terjual: sold, 'Sisa Stok': sisa, 'Nilai Sisa (HPP)': rp(sisa * i.hpp) };
         });
-      }),
-    ];
+      });
 
-    // ===== SHEET 3: BARANG MASUK =====
-    const restocksThisMonth = (storeData.restocks || []).filter((r) => inFilterMonth(r.date));
-    const restockSheet = restocksThisMonth.length > 0
-      ? [
-          ...restocksThisMonth.flatMap((r) => {
-            const invItem = storeData.inventory.find((i) => i.sku === r.sku);
-            return r.sizes
-              .filter((s) => s.stock > 0)
-              .map((s) => ({
-                'Tanggal Masuk': fmtDate(r.date),
-                SKU: r.sku,
-                'Nama Produk': invItem?.name || '-',
-                Ukuran: s.size,
-                'Qty Masuk': s.stock,
-                'HPP (Modal)': rp(invItem?.hpp || 0),
-                'Nilai Masuk': rp(s.stock * (invItem?.hpp || 0)),
-                Keterangan: r.note || '-',
+      const restocksThisMonth = (storeData.restocks || []).filter((r) => inFilterMonth(r.date));
+      const restockSheet = restocksThisMonth.length > 0
+        ? [
+            ...restocksThisMonth.flatMap((r) => {
+              const invItem = storeData.inventory.find((i) => i.sku === r.sku);
+              return r.sizes.filter((s) => s.stock > 0).map((s) => ({
+                'Tanggal Masuk': fmtDate(r.date), SKU: r.sku,
+                'Nama Produk': invItem?.name || '-', Ukuran: s.size,
+                'Qty Masuk': s.stock, 'HPP (Modal)': rp(invItem?.hpp || 0),
+                'Nilai Masuk': rp(s.stock * (invItem?.hpp || 0)), Keterangan: r.note || '-',
               }));
-          }),
-          {},
-          {
-            'Tanggal Masuk': 'TOTAL',
-            SKU: '',
-            'Nama Produk': '',
-            Ukuran: '',
-            'Qty Masuk': restocksThisMonth.flatMap(r => r.sizes).reduce((sum, s) => sum + s.stock, 0),
-            'HPP (Modal)': '',
-            'Nilai Masuk': rp(restocksThisMonth.flatMap(r => {
-              const inv = storeData.inventory.find(i => i.sku === r.sku);
-              return r.sizes.map(s => s.stock * (inv?.hpp || 0));
-            }).reduce((a, b) => a + b, 0)),
-            Keterangan: '',
-          },
-        ]
-      : [{ Info: `Tidak ada barang masuk di bulan ${bulanLabel}` }];
+            }),
+            {},
+            {
+              'Tanggal Masuk': 'TOTAL', SKU: '', 'Nama Produk': '', Ukuran: '',
+              'Qty Masuk': restocksThisMonth.flatMap(r => r.sizes).reduce((sum, s) => sum + s.stock, 0),
+              'HPP (Modal)': '',
+              'Nilai Masuk': rp(restocksThisMonth.flatMap(r => {
+                const inv = storeData.inventory.find(i => i.sku === r.sku);
+                return r.sizes.map(s => s.stock * (inv?.hpp || 0));
+              }).reduce((a, b) => a + b, 0)),
+              Keterangan: '',
+            },
+          ]
+        : [{ Info: `Tidak ada barang masuk di bulan ${bulanLabel}` }];
 
-    // ===== SHEET 4: PENGELUARAN =====
-    const expenseSheet = [
-      ...expensesThisMonth.map((e) => ({
-        Tanggal: fmtDate(e.date),
-        Kategori: e.category,
-        Deskripsi: e.desc,
-        Nominal: rp(e.amount),
-      })),
-      {},
-      {
-        Tanggal: 'TOTAL',
-        Kategori: '',
-        Deskripsi: '',
-        Nominal: rp(expensesThisMonth.reduce((sum, e) => sum + e.amount, 0)),
-      },
-    ];
+      const expenseSheet = [
+        ...expensesThisMonth.map((e) => ({
+          Tanggal: fmtDate(e.date), Kategori: e.category, Deskripsi: e.desc, Nominal: rp(e.amount),
+        })),
+        {},
+        { Tanggal: 'TOTAL', Kategori: '', Deskripsi: '', Nominal: rp(expensesThisMonth.reduce((sum, e) => sum + e.amount, 0)) },
+      ];
 
-    // ===== SHEET 5: LABA RUGI =====
-    // Hitung revenue bulan ini saja (metrics adalah akumulatif semua waktu)
-    const revenueMonth = isFnb
-      ? fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)
-      : salesThisMonth.reduce((sum, s) => {
-          const inv = storeData.inventory.find(i => i.sku === s.sku);
-          return sum + (inv ? inv.price * s.qty : 0);
-        }, 0);
-    const hppMonth = isFnb
-      ? fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => {
-          const inv = storeData.inventory.find(i => i.sku === si.sku);
-          return sum + (inv ? inv.hpp * si.qty : 0);
-        }, 0)
-      : salesThisMonth.reduce((sum, s) => {
-          const inv = storeData.inventory.find(i => i.sku === s.sku);
-          return sum + (inv ? inv.hpp * s.qty : 0);
-        }, 0);
-    const expenseMonth = expensesThisMonth.reduce((sum, e) => sum + e.amount, 0);
-    const grossMonth = revenueMonth - hppMonth;
-    const netMonth = grossMonth - expenseMonth;
+      const revenueMonth = isFnb
+        ? fnbSalesThisMonth.reduce((sum, s) => sum + s.total, 0)
+        : salesThisMonth.reduce((sum, s) => { const inv = storeData.inventory.find(i => i.sku === s.sku); return sum + (inv ? inv.price * s.qty : 0); }, 0);
+      const hppMonth = isFnb
+        ? fnbSalesThisMonth.flatMap(s => s.items).reduce((sum, si) => { const inv = storeData.inventory.find(i => i.sku === si.sku); return sum + (inv ? inv.hpp * si.qty : 0); }, 0)
+        : salesThisMonth.reduce((sum, s) => { const inv = storeData.inventory.find(i => i.sku === s.sku); return sum + (inv ? inv.hpp * s.qty : 0); }, 0);
+      const expenseMonth = expensesThisMonth.reduce((sum, e) => sum + e.amount, 0);
+      const grossMonth = revenueMonth - hppMonth;
+      const netMonth = grossMonth - expenseMonth;
 
-    const profitSheet = [
-      { Keterangan: 'PENDAPATAN', Nominal: '' },
-      { Keterangan: 'Total Omzet', Nominal: rp(revenueMonth) },
-      { Keterangan: '', Nominal: '' },
-      { Keterangan: 'BEBAN POKOK PENJUALAN', Nominal: '' },
-      { Keterangan: 'Total HPP Terjual', Nominal: rp(hppMonth) },
-      { Keterangan: '', Nominal: '' },
-      { Keterangan: 'Laba Kotor', Nominal: rp(grossMonth) },
-      { Keterangan: '', Nominal: '' },
-      { Keterangan: 'BEBAN OPERASIONAL', Nominal: '' },
-      { Keterangan: 'Total Pengeluaran', Nominal: rp(expenseMonth) },
-      { Keterangan: '', Nominal: '' },
-      { Keterangan: 'LABA BERSIH', Nominal: rp(netMonth) },
-    ];
+      const profitSheet = [
+        { Keterangan: 'PENDAPATAN', Nominal: '' },
+        { Keterangan: 'Total Omzet', Nominal: rp(revenueMonth) },
+        { Keterangan: '', Nominal: '' },
+        { Keterangan: 'BEBAN POKOK PENJUALAN', Nominal: '' },
+        { Keterangan: 'Total HPP Terjual', Nominal: rp(hppMonth) },
+        { Keterangan: '', Nominal: '' },
+        { Keterangan: 'Laba Kotor', Nominal: rp(grossMonth) },
+        { Keterangan: '', Nominal: '' },
+        { Keterangan: 'BEBAN OPERASIONAL', Nominal: '' },
+        { Keterangan: 'Total Pengeluaran', Nominal: rp(expenseMonth) },
+        { Keterangan: '', Nominal: '' },
+        { Keterangan: 'LABA BERSIH', Nominal: rp(netMonth) },
+      ];
 
-    // Helper: buat sheet dengan judul di baris 1, lalu header + data mulai baris 3
-    const makeSheet = (title: string, rows: Record<string, any>[]) => {
-      if (rows.length === 0) rows = [{}];
-      const ws = XLSX.utils.json_to_sheet([{}], { skipHeader: true }); // baris 1: judul
-      XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
-      XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });           // baris 3: header + data
-      return ws;
-    };
+      const makeSheet = (title: string, rows: Record<string, any>[]) => {
+        if (rows.length === 0) rows = [{}];
+        const ws = XLSX.utils.json_to_sheet([{}], { skipHeader: true });
+        XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
+        XLSX.utils.sheet_add_json(ws, rows, { origin: 'A3' });
+        return ws;
+      };
 
-    const workbook = XLSX.utils.book_new();
-
-    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENJUALAN — ${bulanLabel}`, salesSheet), "Penjualan");
-    XLSX.utils.book_append_sheet(workbook, makeSheet('RINGKASAN STOK BARANG (Akumulatif)', inventorySheet), "Stok Barang");
-    XLSX.utils.book_append_sheet(workbook, makeSheet(`BARANG MASUK — ${bulanLabel}`, restockSheet.length > 0 ? restockSheet : [{ Info: `Tidak ada barang masuk di bulan ${bulanLabel}` }]), "Barang Masuk");
-    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENGELUARAN — ${bulanLabel}`, expenseSheet), "Pengeluaran");
-    XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN LABA RUGI — ${bulanLabel}`, profitSheet), "Laba Rugi");
-
-    XLSX.writeFile(workbook, `laporan-${bulanLabel.replace(' ', '-').toLowerCase()}.xlsx`);
-    toast.success(`Laporan ${bulanLabel} berhasil diexport ke Excel.`);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENJUALAN — ${bulanLabel}`, salesSheet), "Penjualan");
+      XLSX.utils.book_append_sheet(workbook, makeSheet('RINGKASAN STOK BARANG (Akumulatif)', inventorySheet), "Stok Barang");
+      XLSX.utils.book_append_sheet(workbook, makeSheet(`BARANG MASUK — ${bulanLabel}`, restockSheet), "Barang Masuk");
+      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN PENGELUARAN — ${bulanLabel}`, expenseSheet), "Pengeluaran");
+      XLSX.utils.book_append_sheet(workbook, makeSheet(`LAPORAN LABA RUGI — ${bulanLabel}`, profitSheet), "Laba Rugi");
+      XLSX.writeFile(workbook, `laporan-${bulanLabel.replace(' ', '-').toLowerCase()}.xlsx`);
+      toast.success(`Laporan ${bulanLabel} berhasil diexport ke Excel.`);
     } catch {
       toast.error('Gagal mengekspor laporan. Coba lagi.');
     }
   };
 
-  const [newExp, setNewExp] = useState({
-    date: "",
-    category: "",
-    desc: "",
-    amount: "",
-  });
+  const [newExp, setNewExp] = useState({ date: "", category: "", desc: "", amount: "" });
 
   // ==============================
   // LOAD STORE
   // ==============================
 
   useEffect(() => {
-    // Coba key baru dulu, fallback ke key lama untuk backward compat
     const savedStore =
       localStorage.getItem("systemPosStoreCode") ||
       localStorage.getItem("merchantOsStoreCode");
-
     if (savedStore && user) {
-      // Migrate ke key baru kalau masih pakai key lama
       localStorage.setItem("systemPosStoreCode", savedStore);
       localStorage.removeItem("merchantOsStoreCode");
       setActiveStore(savedStore);
@@ -326,13 +242,7 @@ export default function App() {
   const handleLogoutStore = () => {
     setActiveStore("");
     localStorage.removeItem("systemPosStoreCode");
-
-    setStoreData({
-      inventory: [],
-      restocks: [],
-      sales: [],
-      expenses: [],
-    });
+    // PENTING: tidak set storeData ke empty — biarkan useStoreData handle reset via useEffect
   };
 
   // ==============================
@@ -344,7 +254,7 @@ export default function App() {
     const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
     saveToCloud(newData)
-      .then(() => toast.success('Produk berhasil ditambahkan ke database.'))
+      .then(() => toast.success('Produk berhasil ditambahkan.'))
       .catch(() => toast.error('Gagal menyimpan produk. Periksa koneksi internet kamu.'));
   };
 
@@ -365,9 +275,7 @@ export default function App() {
   };
 
   const handleUpdateInventory = (oldSku: string, item: InventoryItem) => {
-    const updatedInv = storeData.inventory.map((i) =>
-      i.sku === oldSku ? item : i
-    );
+    const updatedInv = storeData.inventory.map((i) => i.sku === oldSku ? item : i);
     const newData = { ...storeData, inventory: updatedInv };
     setStoreData(newData);
     saveToCloud(newData)
@@ -376,10 +284,7 @@ export default function App() {
   };
 
   const handleAddRestock = (restock: Omit<RestockItem, "id">) => {
-    const newRestock: RestockItem = {
-      id: Date.now().toString(),
-      ...restock,
-    };
+    const newRestock: RestockItem = { id: Date.now().toString(), ...restock };
     const updatedRestocks = [newRestock, ...(storeData.restocks || [])];
     const newData = { ...storeData, restocks: updatedRestocks };
     setStoreData(newData);
@@ -389,10 +294,18 @@ export default function App() {
   };
 
   const handleDeleteRestock = (id: string) => {
-    const updatedRestocks = (storeData.restocks || []).filter((r) => r.id !== id);
-    const newData = { ...storeData, restocks: updatedRestocks };
-    setStoreData(newData);
-    saveToCloud(newData);
+    confirm(
+      'Hapus Restock',
+      'Yakin mau hapus riwayat restock ini? Data tidak bisa dikembalikan.',
+      () => {
+        const updatedRestocks = (storeData.restocks || []).filter((r) => r.id !== id);
+        const newData = { ...storeData, restocks: updatedRestocks };
+        setStoreData(newData);
+        saveToCloud(newData)
+          .then(() => toast.success('Restock berhasil dihapus.'))
+          .catch(() => toast.error('Gagal menghapus restock. Coba lagi.'));
+      }
+    );
   };
 
   // ==============================
@@ -402,15 +315,11 @@ export default function App() {
   const handleAddSale = (sale: Omit<SaleItem, "id">) => {
     const newSale: SaleItem = {
       id: Date.now().toString(),
-      date: sale.date,
-      invoice: sale.invoice,
-      sku: sale.sku,
-      qty: Number(sale.qty),
-      size: sale.size,
+      date: sale.date, invoice: sale.invoice, sku: sale.sku,
+      qty: Number(sale.qty), size: sale.size,
       status: sale.status || 'selesai',
       dpAmount: sale.status === 'dp' ? sale.dpAmount : undefined,
     };
-
     const updatedSales = [newSale, ...(storeData.sales || [])];
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
@@ -465,7 +374,9 @@ export default function App() {
     );
     const newData = { ...storeData, sales: updatedSales };
     setStoreData(newData);
-    saveToCloud(newData);
+    saveToCloud(newData)
+      .then(() => toast.success('Status berhasil diperbarui.'))
+      .catch(() => toast.error('Gagal memperbarui status. Coba lagi.'));
   };
 
   // ==============================
@@ -475,19 +386,15 @@ export default function App() {
   const handleAddExpense = (expense: Omit<ExpenseItem, "id">) => {
     const exp: ExpenseItem = {
       id: Date.now().toString(),
-      date: expense.date,
-      category: expense.category,
-      desc: expense.desc,
-      amount: Number(expense.amount),
+      date: expense.date, category: expense.category,
+      desc: expense.desc, amount: Number(expense.amount),
     };
-
     const updatedExpenses = [exp, ...(storeData.expenses || [])];
     const newData = { ...storeData, expenses: updatedExpenses };
     setStoreData(newData);
     saveToCloud(newData)
       .then(() => toast.success('Pengeluaran berhasil dicatat.'))
       .catch(() => toast.error('Gagal menyimpan pengeluaran. Periksa koneksi internet kamu.'));
-
     setNewExp({ ...newExp, desc: "", amount: "" });
   };
 
@@ -512,36 +419,30 @@ export default function App() {
 
   if (isInitializing) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}>
         <div className="text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Menghubungkan...</p>
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: '#8b5cf6', borderTopColor: 'transparent' }} />
+          <p className="text-sm" style={{ color: '#6b7280' }}>Menghubungkan...</p>
         </div>
       </div>
     );
   }
 
-  if (!activeStore) {
-    return <AuthScreen setActiveStore={setActiveStore} />;
-  }
-
-  // ==============================
-  // UI
-  // ==============================
+  if (!activeStore) return <AuthScreen setActiveStore={setActiveStore} />;
 
   if (isStoreLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}>
         <div className="text-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Memuat data toko...</p>
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: '#8b5cf6', borderTopColor: 'transparent' }} />
+          <p className="text-sm" style={{ color: '#6b7280' }}>Memuat data toko...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: 'var(--bg-base)' }}>
+    <div className="min-h-screen flex" style={{ background: '#0a0a0f' }}>
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -549,13 +450,7 @@ export default function App() {
         storeType={storeData.storeType}
         handleLogoutStore={handleLogoutStore}
       />
-
-      {/*
-        pt-14  = ruang untuk mobile top bar (fixed, ~56px)
-        pb-16  = ruang untuk mobile bottom nav (fixed, ~64px)
-        md:pt-0 md:pb-0 = reset di desktop karena sidebar di sisi, bukan fixed top/bottom
-      */}
-      <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden" style={{ background: 'var(--bg-base)' }}>
+      <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden" style={{ background: '#0a0a0f' }}>
         {activeTab === "dashboard" && (
           <DashboardTab
             handleExportData={handleExportData}
@@ -623,10 +518,7 @@ export default function App() {
         )}
 
         {activeTab === "closing" && (
-          <ClosingTab
-            storeData={storeData}
-            metrics={metrics}
-          />
+          <ClosingTab storeData={storeData} metrics={metrics} />
         )}
       </main>
       <ConfirmDialog
