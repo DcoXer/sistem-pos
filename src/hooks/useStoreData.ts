@@ -41,8 +41,6 @@ export function useStoreData(user: User | null, activeStore: string) {
 
     setIsStoreLoading(true);
     isLoadedRef.current = false;
-    // hasExistedRef TIDAK di-reset di sini
-    // Biar tetap true meski listener reconnect karena sinyal jelek
 
     const docRef = doc(db, 'stores', activeStore);
 
@@ -59,7 +57,7 @@ export function useStoreData(user: User | null, activeStore: string) {
           inventory: data.inventory || [],
           restocks: data.restocks || [],
           sales: data.sales || [],
-          fnbSales: data.fnbSales || [],
+          fnbSales: data.fnbSales ?? [],
           expenses: data.expenses || [],
         };
 
@@ -68,7 +66,7 @@ export function useStoreData(user: User | null, activeStore: string) {
         const suspiciousWipe =
           (last.inventory > 2 && incoming.inventory.length === 0) ||
           (last.sales > 2 && incoming.sales.length === 0) ||
-          (last.fnbSales > 2 && incoming.fnbSales.length === 0);
+          (last.fnbSales > 2 && (incoming.fnbSales ?? []).length === 0);
 
         if (suspiciousWipe) {
           console.error('[useStoreData] SUSPICIOUS WIPE DETECTED — snapshot ditolak', {
@@ -76,7 +74,7 @@ export function useStoreData(user: User | null, activeStore: string) {
             incoming: {
               inventory: incoming.inventory.length,
               sales: incoming.sales.length,
-              fnbSales: incoming.fnbSales.length,
+              fnbSales: (incoming.fnbSales ?? []).length,
             }
           });
           setIsStoreLoading(false);
@@ -88,7 +86,7 @@ export function useStoreData(user: User | null, activeStore: string) {
           const hasData =
             incoming.inventory.length > 0 ||
             incoming.sales.length > 0 ||
-            incoming.fnbSales.length > 0 ||
+            (incoming.fnbSales ?? []).length > 0 ||
             incoming.expenses.length > 0;
           if (hasData) autoBackup(incoming);
         }
@@ -97,7 +95,7 @@ export function useStoreData(user: User | null, activeStore: string) {
         lastKnownCountRef.current = {
           inventory: incoming.inventory.length,
           sales: incoming.sales.length,
-          fnbSales: incoming.fnbSales.length,
+          fnbSales: (incoming.fnbSales ?? []).length,
           expenses: incoming.expenses.length,
         };
 
@@ -105,12 +103,9 @@ export function useStoreData(user: User | null, activeStore: string) {
         setStoreData(incoming);
       } else {
         if (!hasExistedRef.current) {
-          // Document beneran baru — init
           setDoc(docRef, emptyData);
           setStoreData(emptyData);
         } else {
-          // Document tiba-tiba not found padahal sudah exist
-          // Kemungkinan besar network glitch — jangan sentuh apapun
           console.warn('[useStoreData] Document not found tapi sudah pernah exist — network glitch, skip');
         }
       }
@@ -118,7 +113,6 @@ export function useStoreData(user: User | null, activeStore: string) {
     }, (error) => {
       console.error('[useStoreData] Snapshot error:', error);
       setIsStoreLoading(false);
-      // Tidak pakai alert() — biarkan offline persistence handle
     });
 
     return () => unsubscribe();
@@ -127,11 +121,10 @@ export function useStoreData(user: User | null, activeStore: string) {
   const autoBackup = async (data: StoreData) => {
     if (!activeStore) return;
 
-    // Skip kalau data kosong — jangan backup snapshot kosong
     const isEmpty =
       data.inventory.length === 0 &&
       data.sales.length === 0 &&
-      data.fnbSales.length === 0 &&
+      (data.fnbSales ?? []).length === 0 &&
       data.expenses.length === 0;
     if (isEmpty) {
       console.warn('[autoBackup] Skip — data kosong');
@@ -176,7 +169,7 @@ export function useStoreData(user: User | null, activeStore: string) {
     }
     if (
       last.sales > 0 && newData.sales.length === 0 &&
-      last.fnbSales > 0 && newData.fnbSales.length === 0
+      last.fnbSales > 0 && (newData.fnbSales ?? []).length === 0
     ) {
       console.error('[saveToCloud] BLOCKED — semua sales kosong sekaligus, suspicious');
       return;
@@ -203,7 +196,7 @@ export function useStoreData(user: User | null, activeStore: string) {
       dpAmount: s.dpAmount ?? null,
     }));
 
-    const cleanFnbSales = (newData.fnbSales || []).map(s => ({
+    const cleanFnbSales = (newData.fnbSales ?? []).map(s => ({
       id: s.id,
       date: s.date,
       items: s.items,
