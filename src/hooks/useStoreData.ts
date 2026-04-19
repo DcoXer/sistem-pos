@@ -21,6 +21,12 @@ export function useStoreData(user: User | null, activeStore: string) {
   const isLoadedRef = useRef<boolean>(false);
   const storeTypeRef = useRef<StoreType>('fashion');
   const hasExistedRef = useRef<boolean>(false);
+  const lastKnownCountRef = useRef<{
+    inventory: number;
+    sales: number;
+    fnbSales: number;
+    expenses: number;
+  }>({ inventory: 0, sales: 0, fnbSales: 0, expenses: 0 });
 
   useEffect(() => {
     if (!user || !activeStore) {
@@ -29,12 +35,15 @@ export function useStoreData(user: User | null, activeStore: string) {
       isLoadedRef.current = false;
       storeTypeRef.current = 'fashion';
       hasExistedRef.current = false;
+      lastKnownCountRef.current = { inventory: 0, sales: 0, fnbSales: 0, expenses: 0 };
       return;
     }
 
     setIsStoreLoading(true);
     isLoadedRef.current = false;
-    hasExistedRef.current = false;
+    // hasExistedRef TIDAK di-reset di sini
+    // Biar tetap true meski listener reconnect karena sinyal jelek
+
     const docRef = doc(db, 'stores', activeStore);
 
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
@@ -45,7 +54,7 @@ export function useStoreData(user: User | null, activeStore: string) {
         if (data?.password) passwordRef.current = data.password;
         if (data?.storeType) storeTypeRef.current = data.storeType as StoreType;
 
-        const loadedData: StoreData = {
+        const incoming: StoreData = {
           storeType: storeTypeRef.current,
           inventory: data.inventory || [],
           restocks: data.restocks || [],
@@ -54,24 +63,62 @@ export function useStoreData(user: User | null, activeStore: string) {
           expenses: data.expenses || [],
         };
 
-        if (!isLoadedRef.current) autoBackup(loadedData);
+        // Guard: tolak snapshot kalau suspicious wipe
+        const last = lastKnownCountRef.current;
+        const suspiciousWipe =
+          (last.inventory > 2 && incoming.inventory.length === 0) ||
+          (last.sales > 2 && incoming.sales.length === 0) ||
+          (last.fnbSales > 2 && incoming.fnbSales.length === 0);
+
+        if (suspiciousWipe) {
+          console.error('[useStoreData] SUSPICIOUS WIPE DETECTED — snapshot ditolak', {
+            last,
+            incoming: {
+              inventory: incoming.inventory.length,
+              sales: incoming.sales.length,
+              fnbSales: incoming.fnbSales.length,
+            }
+          });
+          setIsStoreLoading(false);
+          return;
+        }
+
+        // autoBackup hanya jalan saat pertama load dan data ada isinya
+        if (!isLoadedRef.current) {
+          const hasData =
+            incoming.inventory.length > 0 ||
+            incoming.sales.length > 0 ||
+            incoming.fnbSales.length > 0 ||
+            incoming.expenses.length > 0;
+          if (hasData) autoBackup(incoming);
+        }
+
+        // Update last known count dengan data valid
+        lastKnownCountRef.current = {
+          inventory: incoming.inventory.length,
+          sales: incoming.sales.length,
+          fnbSales: incoming.fnbSales.length,
+          expenses: incoming.expenses.length,
+        };
 
         isLoadedRef.current = true;
-        setStoreData(loadedData);
+        setStoreData(incoming);
       } else {
-        // Hanya init document baru kalau belum pernah exist
         if (!hasExistedRef.current) {
+          // Document beneran baru — init
           setDoc(docRef, emptyData);
           setStoreData(emptyData);
         } else {
+          // Document tiba-tiba not found padahal sudah exist
+          // Kemungkinan besar network glitch — jangan sentuh apapun
           console.warn('[useStoreData] Document not found tapi sudah pernah exist — network glitch, skip');
         }
       }
       setIsStoreLoading(false);
     }, (error) => {
-      console.error("Error sinkronisasi data:", error);
-      alert("Koneksi terputus. Cek internet kamu.");
+      console.error('[useStoreData] Snapshot error:', error);
       setIsStoreLoading(false);
+      // Tidak pakai alert() — biarkan offline persistence handle
     });
 
     return () => unsubscribe();
@@ -79,6 +126,18 @@ export function useStoreData(user: User | null, activeStore: string) {
 
   const autoBackup = async (data: StoreData) => {
     if (!activeStore) return;
+
+    // Skip kalau data kosong — jangan backup snapshot kosong
+    const isEmpty =
+      data.inventory.length === 0 &&
+      data.sales.length === 0 &&
+      data.fnbSales.length === 0 &&
+      data.expenses.length === 0;
+    if (isEmpty) {
+      console.warn('[autoBackup] Skip — data kosong');
+      return;
+    }
+
     try {
       const backupRef = doc(
         collection(doc(db, 'stores', activeStore), 'backups'),
@@ -98,11 +157,6 @@ export function useStoreData(user: User | null, activeStore: string) {
     }
   };
 
-  // ==============================
-  // saveToCloud — pakai updateDoc per field, BUKAN setDoc seluruh document
-  // Ini jauh lebih aman: kalau ada field yang undefined/kosong,
-  // field lain di Firestore tidak tersentuh
-  // ==============================
   const saveToCloud = async (newData: StoreData) => {
     if (!user || !activeStore) return;
     if (!isLoadedRef.current) {
@@ -114,9 +168,22 @@ export function useStoreData(user: User | null, activeStore: string) {
       return;
     }
 
+    // Guard: jangan nulis array kosong kalau last known ada isinya
+    const last = lastKnownCountRef.current;
+    if (last.inventory > 0 && newData.inventory.length === 0) {
+      console.error('[saveToCloud] BLOCKED — inventory tiba-tiba kosong');
+      return;
+    }
+    if (
+      last.sales > 0 && newData.sales.length === 0 &&
+      last.fnbSales > 0 && newData.fnbSales.length === 0
+    ) {
+      console.error('[saveToCloud] BLOCKED — semua sales kosong sekaligus, suspicious');
+      return;
+    }
+
     const docRef = doc(db, 'stores', activeStore);
 
-    // Clean inventory — strip undefined
     const cleanInventory = newData.inventory.map(item => ({
       sku: item.sku,
       name: item.name,
@@ -125,7 +192,6 @@ export function useStoreData(user: User | null, activeStore: string) {
       imageUrl: item.imageUrl ?? null,
     }));
 
-    // Clean sales
     const cleanSales = newData.sales.map(s => ({
       id: s.id,
       date: s.date,
@@ -137,7 +203,6 @@ export function useStoreData(user: User | null, activeStore: string) {
       dpAmount: s.dpAmount ?? null,
     }));
 
-    // Clean fnbSales
     const cleanFnbSales = (newData.fnbSales || []).map(s => ({
       id: s.id,
       date: s.date,
@@ -145,15 +210,12 @@ export function useStoreData(user: User | null, activeStore: string) {
       total: s.total,
     }));
 
-    // updateDoc — hanya update field yang dikirim, field lain di Firestore TIDAK tersentuh
-    // Ini mencegah race condition yang bisa hapus data field lain
     await updateDoc(docRef, {
       inventory: cleanInventory,
       restocks: newData.restocks || [],
       sales: cleanSales,
       fnbSales: cleanFnbSales,
       expenses: newData.expenses || [],
-      // storeType TIDAK di-update — nilainya sudah fix saat pembuatan toko
     });
   };
 
