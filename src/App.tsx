@@ -52,6 +52,19 @@ export default function App() {
     toast.success('Data berhasil direstore dari backup.');
   };
 
+  const handleMerge = async (data: StoreData) => {
+    const docRef = doc(db, 'stores', activeStore);
+    await updateDoc(docRef, {
+      inventory: data.inventory || [],
+      restocks: data.restocks || [],
+      sales: data.sales || [],
+      fnbSales: data.fnbSales || [],
+      expenses: data.expenses || [],
+    });
+    setStoreData(data);
+    toast.success('Import JSON berhasil.');
+  };
+
   // ==============================
   // EXPORT DATA
   // ==============================
@@ -608,7 +621,9 @@ export default function App() {
         isOpen={isBackupModalOpen}
         onClose={() => setIsBackupModalOpen(false)}
         activeStore={activeStore}
+        storeData={storeData}
         onRestore={handleRestore}
+        onMerge={handleMerge}
       />
 
       <ConfirmDialog
