@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "./firebase";
 import { useAuth } from "./hooks/useAuth";
 import { useStoreData } from "./hooks/useStoreData";
 import { useMetrics } from "./hooks/useMetrics";
@@ -12,8 +14,9 @@ import ExpensesTab from "./components/ExpensesTab";
 import ClosingTab from "./components/ClosingTab";
 import FnbInventoryTab from "./components/FnbInventoryTab";
 import FnbSalesTab from "./components/FnbSalesTab";
+import BackupRestoreModal from "./components/BackupRestoreModal";
 
-import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem, FnbSaleItem } from "./types";
+import type { InventoryItem, RestockItem, SaleItem, SaleStatus, ExpenseItem, FnbSaleItem, StoreData } from "./types";
 import { Toast, useToast } from "./components/Toast";
 import ConfirmDialog, { useConfirm } from "./components/ConfirmDialog";
 
@@ -22,6 +25,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeStore, setActiveStore] = useState("");
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [filterMonth, setFilterMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -31,6 +35,22 @@ export default function App() {
   const metrics = useMetrics(storeData);
   const toast = useToast();
   const { confirmState, confirm, cancelConfirm } = useConfirm();
+
+  // ==============================
+  // RESTORE FROM BACKUP
+  // ==============================
+
+  const handleRestore = async (data: StoreData) => {
+    const docRef = doc(db, 'stores', activeStore);
+    await updateDoc(docRef, {
+      inventory: data.inventory || [],
+      restocks: data.restocks || [],
+      sales: data.sales || [],
+      fnbSales: data.fnbSales || [],
+      expenses: data.expenses || [],
+    });
+    toast.success('Data berhasil direstore dari backup.');
+  };
 
   // ==============================
   // EXPORT DATA
@@ -197,7 +217,7 @@ export default function App() {
         { Keterangan: 'LABA BERSIH', Nominal: rp(netMonth) },
       ];
 
-      const makeSheet = (title: string, rows: Record<string, any>[]) => {
+      const makeSheet = (title: string, rows: Record<string, unknown>[]) => {
         if (rows.length === 0) rows = [{}];
         const ws = XLSX.utils.json_to_sheet([{}], { skipHeader: true });
         XLSX.utils.sheet_add_aoa(ws, [[title]], { origin: 'A1' });
@@ -218,7 +238,6 @@ export default function App() {
     }
   };
 
-
   // ==============================
   // AUTO BACKUP EXCEL — sekali per hari saat data pertama kali load
   // ==============================
@@ -227,7 +246,7 @@ export default function App() {
       const today = new Date().toISOString().split('T')[0];
       const lastBackupKey = `systemPosLastBackup_${activeStore}`;
       const lastBackup = localStorage.getItem(lastBackupKey);
-      if (lastBackup === today) return; // sudah backup hari ini
+      if (lastBackup === today) return;
 
       const now = new Date();
       const bulanLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -237,12 +256,10 @@ export default function App() {
 
       const isFnb = data.storeType === 'fnb';
 
-      // Sheet inventory
       const inventoryRows = data.inventory.map(i => ({
         SKU: i.sku, Nama: i.name, HPP: rp(i.hpp), Harga: rp(i.price),
       }));
 
-      // Sheet penjualan bulan ini
       const salesRows = isFnb
         ? (data.fnbSales || []).filter(s => s.date.startsWith(bulanLabel)).map(s => ({
             Tanggal: s.date,
@@ -255,13 +272,12 @@ export default function App() {
             Status: s.status || 'selesai',
           }));
 
-      // Sheet pengeluaran bulan ini
       const expenseRows = data.expenses.filter(e => e.date.startsWith(bulanLabel)).map(e => ({
         Tanggal: e.date, Kategori: e.category, Deskripsi: e.desc, Nominal: rp(e.amount),
       }));
 
       const wb = XLSX.utils.book_new();
-      const addSheet = (name: string, rows: Record<string, any>[]) => {
+      const addSheet = (name: string, rows: Record<string, unknown>[]) => {
         const ws = XLSX.utils.json_to_sheet(rows.length > 0 ? rows : [{ Info: 'Tidak ada data' }]);
         XLSX.utils.book_append_sheet(wb, ws, name);
       };
@@ -270,8 +286,7 @@ export default function App() {
       addSheet('Penjualan', salesRows);
       addSheet('Pengeluaran', expenseRows);
 
-      const timestamp = today;
-      XLSX.writeFile(wb, `backup-${activeStore}-${timestamp}.xlsx`);
+      XLSX.writeFile(wb, `backup-${activeStore}-${today}.xlsx`);
       localStorage.setItem(lastBackupKey, today);
       toast.success('Backup otomatis berhasil disimpan ke perangkat.');
     } catch (err) {
@@ -281,8 +296,6 @@ export default function App() {
 
   const [newExp, setNewExp] = useState({ date: "", category: "", desc: "", amount: "" });
 
-
-  // Trigger auto backup Excel sekali per hari saat data selesai load
   useEffect(() => {
     if (!isStoreLoading && activeStore && storeData.inventory.length + storeData.sales.length + (storeData.fnbSales?.length || 0) > 0) {
       autoExportBackup(storeData);
@@ -311,7 +324,6 @@ export default function App() {
   const handleLogoutStore = () => {
     setActiveStore("");
     localStorage.removeItem("systemPosStoreCode");
-    // PENTING: tidak set storeData ke empty — biarkan useStoreData handle reset via useEffect
   };
 
   // ==============================
@@ -518,6 +530,7 @@ export default function App() {
         activeStore={activeStore}
         storeType={storeData.storeType}
         handleLogoutStore={handleLogoutStore}
+        onOpenBackupRestore={() => setIsBackupModalOpen(true)}
       />
       <main className="flex-1 p-4 md:p-6 pt-14 pb-20 md:pt-6 md:pb-6 overflow-x-hidden" style={{ background: '#0a0a0f' }}>
         {activeTab === "dashboard" && (
@@ -590,6 +603,14 @@ export default function App() {
           <ClosingTab storeData={storeData} metrics={metrics} />
         )}
       </main>
+
+      <BackupRestoreModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        activeStore={activeStore}
+        onRestore={handleRestore}
+      />
+
       <ConfirmDialog
         isOpen={confirmState.isOpen}
         title={confirmState.title}
