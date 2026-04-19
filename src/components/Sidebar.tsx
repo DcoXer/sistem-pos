@@ -4,7 +4,9 @@ import {
   ShoppingCart, 
   Receipt, 
   LogOut, 
-  CalendarCheck } from 'lucide-react';
+  CalendarCheck,
+  RotateCcw,
+} from 'lucide-react';
 import type { StoreType } from '../types';
 
 interface SidebarProps {
@@ -13,6 +15,7 @@ interface SidebarProps {
   activeStore: string;
   storeType?: StoreType;
   handleLogoutStore: () => void;
+  onOpenBackupRestore: () => void;
 }
 
 const fashionNavItems = [
@@ -31,7 +34,7 @@ const fnbNavItems = [
   { id: 'closing',     icon: CalendarCheck,   label: 'Closing'     },
 ];
 
-export default function Sidebar({ activeTab, setActiveTab, activeStore, storeType, handleLogoutStore }: SidebarProps) {
+export default function Sidebar({ activeTab, setActiveTab, activeStore, storeType, handleLogoutStore, onOpenBackupRestore }: SidebarProps) {
   const navItems = storeType === 'fnb' ? fnbNavItems : fashionNavItems;
 
   return (
@@ -77,12 +80,25 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, storeTyp
           })}
         </ul>
 
-        {/* Logout */}
-        <div className="px-3 py-4 border-t" style={{ borderColor: '#ffffff0d' }}>
+        {/* Bottom actions */}
+        <div className="px-3 py-4 border-t space-y-0.5" style={{ borderColor: '#ffffff0d' }}>
+          {/* Backup Restore */}
+          <button
+            onClick={onOpenBackupRestore}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium"
+            style={{ color: '#6b7280' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#8b5cf6'; (e.currentTarget as HTMLElement).style.background = '#8b5cf615'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6b7280'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <RotateCcw size={17} />
+            <span>Restore Backup</span>
+          </button>
+
+          {/* Logout */}
           <button
             onClick={handleLogoutStore}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium"
-            style={{ color: '#ff0505' }}
+            style={{ color: '#6b7280' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#ef4444'; (e.currentTarget as HTMLElement).style.background = '#ef444410'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#6b7280'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
@@ -105,13 +121,23 @@ export default function Sidebar({ activeTab, setActiveTab, activeStore, storeTyp
             <p className="text-[9px] font-mono" style={{ color: '#8b5cf6' }}>{activeStore}</p>
           </div>
         </div>
-        <button
-          onClick={handleLogoutStore}
-          className="p-1.5 rounded-lg transition"
-          style={{ color: '#ff0505' }}
-        >
-          <LogOut size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          {/* Backup restore button mobile */}
+          <button
+            onClick={onOpenBackupRestore}
+            className="p-1.5 rounded-lg transition"
+            style={{ color: '#6b7280' }}
+          >
+            <RotateCcw size={16} />
+          </button>
+          <button
+            onClick={handleLogoutStore}
+            className="p-1.5 rounded-lg transition"
+            style={{ color: '#ef4444' }}
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </header>
 
       {/* MOBILE BOTTOM NAV */}
